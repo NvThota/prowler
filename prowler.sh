@@ -31,3 +31,4 @@ yum install -y git
 git clone https://github.com/prowler-cloud/prowler.git
 
 echo "Prowler setup completed!"
+df -Th
