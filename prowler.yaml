@@ -1,0 +1,11 @@
+---
+- name: Run Prowler Docker Container
+  hosts: localhost
+  tasks:
+    - name: Execute single line Docker command
+      shell: prowler --version
+      register: prowler_output
+
+    - name: Display Prowler version output
+      debug:
+        var: prowler_output.stdout
