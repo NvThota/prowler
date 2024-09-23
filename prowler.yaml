@@ -1,7 +1,20 @@
 ---
 - name: Run Prowler Docker Container
   hosts: localhost
-  tasks:
+  tasks:  
+    - name: Copy the
+      copy:
+       src: "prowler.sh"
+       dest: "/tmp/prowler.sh"
+       mode: '0755'
+
+    - name: Execute the shell script
+      shell: "/tmp/prowler.sh" 
+      register: script_output
+
+    - name: Display the output of the script
+      debug:
+        msg: "{{ script_output.stdout }}"  
     - name: Execute single line Docker command
       shell: prowler --version
       register: prowler_output
@@ -9,3 +22,5 @@
     - name: Display Prowler version output
       debug:
         var: prowler_output.stdout
+
+  
