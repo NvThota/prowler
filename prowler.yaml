@@ -1,6 +1,7 @@
 ---
 - name: Run Prowler Docker Container
   hosts: localhost
+  become: True
   tasks:  
     - name: Copy the
       copy:
