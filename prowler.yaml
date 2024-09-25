@@ -19,6 +19,7 @@
     - name: Execute multiple prowler commands in one line
       shell: prowler aws --services ec2
       register: prowler_output
+    - name: Displayin gthe op of prowler commands  
       shell: echo  "{{ prowler_output.stdout }}"
  
     - name: display using the echo command
