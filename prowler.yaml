@@ -3,32 +3,23 @@
   hosts: localhost
   become: True
   tasks:  
-    - name: Copy the
-      copy:
-       src: "prowler.sh"
-       dest: "/tmp/prowler.sh"
-       mode: '0755'
-
-    - name: Execute the shell script
-      shell: "/tmp/prowler.sh" 
-      register: script_output
-
     - name: Display the output of the script
       debug:
         msg: "{{ script_output.stdout }}"  
     - name: Execute multiple prowler commands in one line
       shell: AWS_ACCESS_KEY_ID={{ aws_access_key_id }} AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} prowler aws --services s3
       register: prowler_output
-     
+      ignore_errors: yes
       
     - name: Displayin gthe op of prowler commands  
       shell: echo  "{{ prowler_output.stdout }}"
  
     - name: display using the echo command
-      shell: echo  "{{ prowler_output.stdout }}"
-  
-    - name: Display Prowler version output
-      debug:
-        var: prowler_output.stdout
+      shell: prowler --version
+      register: prowler1_output
+      
+    - name: Displaying the version output
+      shell: echo  "{{ prowler1_output.stdout }}"
+
 
   
