@@ -16,8 +16,14 @@
     - name: Display the output of the script
       debug:
         msg: "{{ script_output.stdout }}"  
-    - name: Execute single line Docker command
-      shell: prowler --version
+    - name: Execute multiple commands in one line
+      shell: |
+        prowler --version
+        df -Th
+        uname -r
+        uname -a
+      register: command_output
+
       register: prowler_output
     - name: display using the echo command
       shell: echo  "{{ prowler_output.stdout }}"
