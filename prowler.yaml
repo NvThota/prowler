@@ -17,7 +17,7 @@
       debug:
         msg: "{{ script_output.stdout }}"  
     - name: Execute multiple prowler commands in one line
-      shell: prowler aws --services ec2
+      shell: prowler aws --services s3
       register: prowler_output
     - name: Displayin gthe op of prowler commands  
       shell: echo  "{{ prowler_output.stdout }}"
