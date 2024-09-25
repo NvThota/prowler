@@ -19,8 +19,7 @@
     - name: Execute multiple prowler commands in one line
       shell: AWS_ACCESS_KEY_ID={{ aws_access_key_id }} AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} prowler aws --services s3
       register: prowler_output
-      environment:
-      AWS_DEFAULT_REGION: "{{ aws_region }}"
+     
       
     - name: Displayin gthe op of prowler commands  
       shell: echo  "{{ prowler_output.stdout }}"
