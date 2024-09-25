@@ -7,6 +7,13 @@
       shell: AWS_ACCESS_KEY_ID={{ aws_access_key_id }} AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} AWS_REGION={{ aws_region }} prowler aws --services s3
       register: prowler_output
       ignore_errors: yes
+    - name: Extract and display the relevant fields
+      set_fact:
+        extracted_results: "{{ prowler_output.stdout | regex_findall('\\| aws\\s+\\| FAIL \\(.*?\\|.*?\\|.*?\\|.*?\\|.*?\\|.*?\\|.*?\\|') }}"
+    - name: Display extracted fields
+      debug:
+        msg: "{{ item }}"
+      loop: "{{ extracted_results }}"
       
     - name: Displayin gthe op of prowler commands  
       shell: echo  "{{ prowler_output.stdout }}"
