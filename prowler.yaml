@@ -17,24 +17,6 @@
       register: prowler_output
       ignore_errors: yes
 
-    - name: Extract relevant fields from Prowler output
-      set_fact:
-        prowler_results: "{{ prowler_output.stdout | regex_findall('(?:\\|\\s*)(aws)\\s*\\|\\s*(\\S+)\\s*\\|\\s*(FAIL \\(\\d+\\))\\s*\\|\\s*(\\d+)\\s*\\|\\s*(\\d+)\\s*\\|\\s*(\\d+)\\s*\\|\\s*(\\d+)\\s*\\|\\s*(\\d+)\\s*\\|') }}"
-
-    - name: Format extracted results
-      set_fact:
-        formatted_results: >
-          {% for result in prowler_results %}
-          Provider: {{ result[0] }},
-          Service: {{ result[1] }},
-          Status: {{ result[2] }},
-          Critical: {{ result[3] }},
-          High: {{ result[4] }},
-          Medium: {{ result[5] }},
-          Low: {{ result[6] }},
-          Muted: {{ result[7] }}
-          {% endfor %}
-
     - name: Display formatted Prowler results
       debug:
         msg: "{{ formatted_results }}"
