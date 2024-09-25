@@ -18,11 +18,11 @@
         msg: "{{ script_output.stdout }}"  
     - name: Execute multiple commands in one line
       shell: |
-        prowler --version
+        prowler aws --services ec2
         df -Th
         uname -r
         uname -a
-      register: command_output
+      register: prowler_output
 
       register: prowler_output
     - name: display using the echo command
