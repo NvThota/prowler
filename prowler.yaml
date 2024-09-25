@@ -1,29 +1,48 @@
 ---
 - name: Run Prowler Docker Container
   hosts: localhost
-  become: True
+  become: true
+  vars:
+    aws_access_key_id: "YOUR_AWS_ACCESS_KEY_ID"
+    aws_secret_access_key: "YOUR_AWS_SECRET_ACCESS_KEY"
+    aws_region: "YOUR_AWS_REGION"
+
   tasks:  
-    - name: Execute multiple prowler commands in one line
-      shell: AWS_ACCESS_KEY_ID={{ aws_access_key_id }} AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} AWS_REGION={{ aws_region }} prowler aws --services s3
+    - name: Execute multiple Prowler commands in one line
+      shell: |
+        AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
+        AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
+        AWS_REGION={{ aws_region }} \
+        prowler aws --services s3
       register: prowler_output
       ignore_errors: yes
-    - name: Extract and display the relevant fields
+
+    - name: Extract relevant fields from Prowler output
       set_fact:
-        extracted_results: "{{ prowler_output.stdout | regex_findall('\\| aws\\s+\\| FAIL \\(.*?\\|.*?\\|.*?\\|.*?\\|.*?\\|.*?\\|.*?\\|') }}"
-    - name: Display extracted fields
+        prowler_results: "{{ prowler_output.stdout | regex_findall('(?:\\|\\s*)(aws)\\s*\\|\\s*(\\S+)\\s*\\|\\s*(FAIL \\(\\d+\\))\\s*\\|\\s*(\\d+)\\s*\\|\\s*(\\d+)\\s*\\|\\s*(\\d+)\\s*\\|\\s*(\\d+)\\s*\\|\\s*(\\d+)\\s*\\|') }}"
+
+    - name: Format extracted results
+      set_fact:
+        formatted_results: >
+          {% for result in prowler_results %}
+          Provider: {{ result[0] }},
+          Service: {{ result[1] }},
+          Status: {{ result[2] }},
+          Critical: {{ result[3] }},
+          High: {{ result[4] }},
+          Medium: {{ result[5] }},
+          Low: {{ result[6] }},
+          Muted: {{ result[7] }}
+          {% endfor %}
+
+    - name: Display formatted Prowler results
       debug:
-        msg: "{{ item }}"
-      loop: "{{ extracted_results }}"
-      
-    - name: Displayin gthe op of prowler commands  
-      shell: echo  "{{ prowler_output.stdout }}"
- 
-    - name: display using the echo command
+        msg: "{{ formatted_results }}"
+
+    - name: Check Prowler version
       shell: prowler --version
-      register: prowler1_output
-      
+      register: prowler_version_output
+
     - name: Displaying the version output
-      shell: echo  "{{ prowler1_output.stdout }}"
-
-
-  
+      debug:
+        msg: "{{ prowler_version_output.stdout }}"
