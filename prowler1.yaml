@@ -1,0 +1,38 @@
+---
+- name: Run Prowler Docker Container
+  hosts: localhost
+  become: True
+  tasks:  
+    - name: Copy the Prowler script
+      copy:
+        src: "prowler1.sh"
+        dest: "/tmp/prowler1.sh"
+        mode: '0755'
+
+    - name: Execute the shell script
+      shell: "/tmp/prowler1.sh" 
+      register: script_output
+
+    - name: Display the output of the script
+      debug:
+        msg: "{{ script_output.stdout }}"  
+        
+    - name: Execute Prowler EC2 scan
+      shell: prowler aws --services ec2
+      register: prowler_output
+
+    - name: Display the output of Prowler EC2 scan
+      debug:
+        msg: "{{ prowler_output.stdout }}"
+
+    - name: Execute Prowler S3 scan
+      shell: prowler aws --services s3
+      register: prowler_s3_output
+
+    - name: Display the output of Prowler S3 scan
+      debug:
+        msg: "{{ prowler_s3_output.stdout }}"
+
+    - name: Display Prowler version output
+      debug:
+        var: prowler_output.stdout
