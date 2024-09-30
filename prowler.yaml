@@ -3,10 +3,6 @@
   hosts: localhost
   become: True
   tasks:
-    - name: Display the output of the script
-      debug:
-        msg: "{{ script_output.stdout }}"  
-
     - name: Execute Prowler commands for S3 using credentials from AWX
       shell: |
         AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
