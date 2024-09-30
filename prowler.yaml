@@ -13,8 +13,8 @@
 	  
     - name: finding the generatde outputs
       shell: ls -l /runner/project/output/*
-      register: output_csv
+      register: csv_output
 	  
     - name: Display Prowler files output
       debug:
-        var: csv_file.stdout
+        var: csv_output.stdout
