@@ -15,7 +15,6 @@
         AWS_REGION={{ aws_region }} \
         prowler aws --services ec2
       register: prowler_output
-      no_log: true
       ignore_errors: yes
 
     - name: Display formatted Prowler results
