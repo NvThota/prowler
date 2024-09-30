@@ -15,7 +15,7 @@
       wait_for:
         path: "/runner/project/output/prowler-output-*.csv"
         state: present
-        timeout: 100
+        timeout: 60
 
     - name: Find the CSV file
       find:
