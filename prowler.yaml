@@ -9,6 +9,7 @@
         AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
         prowler aws --services s3 -M csv
       register: prowler_output
+      ignore_errors: yes
 
     - name: Wait for the CSV file to be generated
       wait_for:
