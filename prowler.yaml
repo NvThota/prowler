@@ -9,11 +9,11 @@
         AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
         prowler aws --services sagemaker -M csv
       register: prowler_output
-      ignore_errors: yes
+      #ignore_errors: yes
     - name: finding the generatde outputs
       shell: cat /runner/project/output/*
       register: csv_output
-      ignore_errors: yes
+      #ignore_errors: yes
     - name: Display Prowler files output
       debug:
         var: csv_output.stdout
