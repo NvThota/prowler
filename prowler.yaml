@@ -10,34 +10,23 @@
         prowler aws --services elb -M csv
       register: prowler_output
       ignore_errors: yes
+	- name: finding the generatde outputs
+	  shell: ls -l /runner/project/output/*
+	  register: output_csv
+	  
 
-    - name: Wait for the CSV file to be generated
-      wait_for:
-        path: "/runner/project/output/prowler-output-*.csv"
-        state: present
-        timeout: 60
+    #- name: Wait for the CSV file to be generated
+     # wait_for:
+      #  path: "/runner/project/output/prowler-output-*.csv"
+       # state: present
+        #timeout: 60
 
     - name: Find the CSV file
       find:
         paths: "/runner/project/output/"
         patterns: "prowler-output-*.csv"
       register: csv_file
-
-    - name: Read the CSV file
-      command: cat "{{ csv_file.files[0].path }}"
-      register: csv_output
-
-    - name: Display the CSV output of Prowler commands
+	  
+	- name: Display Prowler files output
       debug:
-        msg: "{{ csv_output.stdout }}"
-
-    - name: Display using the echo command
-      shell: echo "{{ prowler_output.stdout }}"
-
-    - name: Display Prowler version
-      shell: prowler --version
-      register: prowler_version_output
-
-    - name: Display Prowler version output
-      debug:
-        var: prowler_version_output.stdout
+        var: csv_file.stdout
