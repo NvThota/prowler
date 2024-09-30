@@ -7,7 +7,7 @@
       shell: |
         AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
         AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
-        prowler aws --services elb -M csv
+        prowler aws --services sagemaker -M csv
       register: prowler_output
       ignore_errors: yes
     - name: finding the generatde outputs
