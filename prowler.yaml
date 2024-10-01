@@ -1,19 +1,37 @@
 ---
-- name: Run Prowler Docker Container using AWX Credentials
+- name: Run Prowler Docker Container using ARN for Role Assumption
   hosts: localhost
   become: True
+  vars:
+    role_arn: "arn:aws:iam::663552238330:role/prowler"  # Replace with the ARN of the role you want to assume
+    region: "us-west-2"  # Replace with the appropriate region
   tasks:
-    - name: Execute Prowler commands for elb using credentials from AWX and generate CSV output
+    - name: Assume Role with AWS STS
       shell: |
-        AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
-        AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
+        aws sts assume-role --role-arn {{ role_arn }} --role-session-name prowlerSession --region {{ region }} --output json
+      register: sts_output
+      ignore_errors: yes
+
+    - name: Parse STS output
+      set_fact:
+        aws_access_key_id: "{{ sts_output.stdout | from_json | json_query('Credentials.AccessKeyId') }}"
+        aws_secret_access_key: "{{ sts_output.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
+        aws_session_token: "{{ sts_output.stdout | from_json | json_query('Credentials.SessionToken') }}"
+
+    - name: Execute Prowler commands for ELB using assumed role credentials and generate CSV output
+      shell: |
+        AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
+        AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
+        AWS_SESSION_TOKEN={{ aws_session_token }} \
         prowler aws --services elb -M csv
       register: prowler_output
       ignore_errors: yes
-    - name: finding the generatde outputs
+
+    - name: Find the generated outputs
       shell: cat /runner/project/output/*
       register: csv_output
       ignore_errors: yes
+
     - name: Display Prowler files output
       debug:
         var: csv_output.stdout
