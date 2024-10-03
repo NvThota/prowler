@@ -1,10 +1,12 @@
 ---
-- name: Run Prowler Docker Container using ARN for Role Assumption
+- name: Run Prowler Docker Container using ARN for Role Assumption in AWX
   hosts: localhost
   become: True
   vars:
-    role_arn: "arn:aws:iam::663552238330:role/prowler"  # Replace with the ARN of the role you want to assume
-    region: "us-west-2"  # Replace with the appropriate region
+    role_arn: "{{ role_arn }}"  # This will be passed from AWX as an extra variable
+    region: "{{ region }}"  # This will be passed from AWX as an extra variable
+    services: "{{ services }}"  # List of services passed from AWX as an extra variable (e.g., 's3,vpc,elb')
+
   tasks:
     - name: Assume Role with AWS STS
       shell: |
@@ -18,12 +20,12 @@
         aws_secret_access_key: "{{ sts_output.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
         aws_session_token: "{{ sts_output.stdout | from_json | json_query('Credentials.SessionToken') }}"
 
-    - name: Execute Prowler commands for ELB using assumed role credentials and generate CSV output
+    - name: Execute Prowler commands using assumed role credentials for specified services
       shell: |
         AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
         AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
         AWS_SESSION_TOKEN={{ aws_session_token }} \
-        prowler aws --services elb -M csv
+        prowler aws --services {{ services }} -M csv
       register: prowler_output
       ignore_errors: yes
 
