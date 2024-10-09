@@ -1,39 +1,72 @@
 ---
-- name: Run Prowler Docker Container using ARN for Role Assumption in AWX
+- name: Run Prowler Docker Container using either Service Account or ARN for Role Assumption in AWX
   hosts: localhost
   become: True
   vars:
-    role_arn: "{{ role_arn }}"  # This will be passed from AWX as an extra variable
+    role_arn: "{{ role_arn | default('') }}"  # This will be passed from AWX as an extra variable (for ARN)
     region: "{{ region }}"  # This will be passed from AWX as an extra variable
     services: "{{ services }}"  # List of services passed from AWX as an extra variable (e.g., 's3,vpc,elb')
 
   tasks:
-    - name: Assume Role with AWS STS
+    # Option 1: Assume Role using Service Account
+    - name: Assume Role with AWS STS using Service Account
+      shell: |
+        aws sts assume-role-with-web-identity --role-arn arn:aws:iam::663552238330:role/prowler --role-session-name prowlerSession --region {{ region }} --output json
+      register: sts_output_service
+      ignore_errors: yes
+
+    - name: Parse STS output for Service Account
+      set_fact:
+        aws_access_key_id_service: "{{ sts_output_service.stdout | from_json | json_query('Credentials.AccessKeyId') }}"
+        aws_secret_access_key_service: "{{ sts_output_service.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
+        aws_session_token_service: "{{ sts_output_service.stdout | from_json | json_query('Credentials.SessionToken') }}"
+
+    - name: Execute Prowler commands using assumed role credentials for Service Account
+      shell: |
+        AWS_ACCESS_KEY_ID={{ aws_access_key_id_service }} \
+        AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key_service }} \
+        AWS_SESSION_TOKEN={{ aws_session_token_service }} \
+        prowler aws --services {{ services }} -M csv
+      register: prowler_output_service
+      ignore_errors: yes
+
+    - name: Find the generated outputs for Service Account
+      shell: cat /runner/project/output/*
+      register: csv_output_service
+      ignore_errors: yes
+
+    - name: Display Prowler files output for Service Account
+      debug:
+        var: csv_output_service.stdout
+
+
+    # Option 2: Assume Role using ARN
+    - name: Assume Role with AWS STS using ARN
       shell: |
         aws sts assume-role --role-arn {{ role_arn }} --role-session-name prowlerSession --region {{ region }} --output json
-      register: sts_output
+      register: sts_output_arn
       ignore_errors: yes
 
-    - name: Parse STS output
+    - name: Parse STS output for ARN
       set_fact:
-        aws_access_key_id: "{{ sts_output.stdout | from_json | json_query('Credentials.AccessKeyId') }}"
-        aws_secret_access_key: "{{ sts_output.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
-        aws_session_token: "{{ sts_output.stdout | from_json | json_query('Credentials.SessionToken') }}"
+        aws_access_key_id_arn: "{{ sts_output_arn.stdout | from_json | json_query('Credentials.AccessKeyId') }}"
+        aws_secret_access_key_arn: "{{ sts_output_arn.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
+        aws_session_token_arn: "{{ sts_output_arn.stdout | from_json | json_query('Credentials.SessionToken') }}"
 
-    - name: Execute Prowler commands using assumed role credentials for specified services
+    - name: Execute Prowler commands using assumed role credentials for ARN
       shell: |
-        AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
-        AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
-        AWS_SESSION_TOKEN={{ aws_session_token }} \
+        AWS_ACCESS_KEY_ID={{ aws_access_key_id_arn }} \
+        AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key_arn }} \
+        AWS_SESSION_TOKEN={{ aws_session_token_arn }} \
         prowler aws --services {{ services }} -M csv
-      register: prowler_output
+      register: prowler_output_arn
       ignore_errors: yes
 
-    - name: Find the generated outputs
+    - name: Find the generated outputs for ARN
       shell: cat /runner/project/output/*
-      register: csv_output
+      register: csv_output_arn
       ignore_errors: yes
 
-    - name: Display Prowler files output
+    - name: Display Prowler files output for ARN
       debug:
-        var: csv_output.stdout
+        var: csv_output_arn.stdout
