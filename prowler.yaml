@@ -2,6 +2,7 @@
 - name: Run Prowler Docker Container using either Service Account or ARN for Role Assumption in AWX
   hosts: localhost
   become: True
+
   vars_prompt:
     - name: choice
       prompt: "Choose an option (1 for Service Account, 2 for ARN)"
@@ -66,7 +67,6 @@
       debug:
         var: csv_output_service.stdout
       when: choice == '1'
-
 
     # Option 2: Assume Role using ARN
     - name: Assume Role with AWS STS using ARN
