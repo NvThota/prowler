@@ -11,8 +11,8 @@
     - name: role_arn
       prompt: "Enter the Role ARN (only required for option 2)"
       private: no
-      when: choice == '2'
-
+      default: ""
+    
     - name: region
       prompt: "Enter the AWS region"
       private: no
@@ -24,13 +24,23 @@
     - name: web_identity_token
       prompt: "Enter the path to the web identity token (only required for option 1)"
       private: no
-      when: choice == '1'
+      default: ""
 
   tasks:
     - name: Validate user choice
       fail:
         msg: "Invalid choice. Please choose 1 for Service Account or 2 for ARN."
       when: choice not in ['1', '2']
+
+    - name: Check if role ARN is required but not provided
+      fail:
+        msg: "Role ARN is required for option 2"
+      when: choice == '2' and role_arn == ""
+
+    - name: Check if web identity token is required but not provided
+      fail:
+        msg: "Web identity token is required for option 1"
+      when: choice == '1' and web_identity_token == ""
 
     # Option 1: Assume Role using Service Account
     - name: Assume Role with AWS STS using Service Account
@@ -57,17 +67,6 @@
       ignore_errors: yes
       when: choice == '1'
 
-    - name: Find the generated outputs for Service Account
-      shell: cat /runner/project/output/*
-      register: csv_output_service
-      ignore_errors: yes
-      when: choice == '1'
-
-    - name: Display Prowler files output for Service Account
-      debug:
-        var: csv_output_service.stdout
-      when: choice == '1'
-
     # Option 2: Assume Role using ARN
     - name: Assume Role with AWS STS using ARN
       shell: |
@@ -91,15 +90,4 @@
         prowler aws --services {{ services }} -M csv
       register: prowler_output_arn
       ignore_errors: yes
-      when: choice == '2'
-
-    - name: Find the generated outputs for ARN
-      shell: cat /runner/project/output/*
-      register: csv_output_arn
-      ignore_errors: yes
-      when: choice == '2'
-
-    - name: Display Prowler files output for ARN
-      debug:
-        var: csv_output_arn.stdout
       when: choice == '2'
