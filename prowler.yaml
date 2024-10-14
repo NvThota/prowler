@@ -91,3 +91,26 @@
       register: prowler_output_arn
       ignore_errors: yes
       when: choice == '2'
+
+    # Common Task: Find the generated CSV file
+    - name: Find the generated CSV file
+      shell: cat /runner/project/output/*.csv
+      register: csv_output
+      ignore_errors: yes
+
+    - name: Upload CSV file to Backend API
+      uri:
+        url: "https://backend.example.com/upload"
+        method: POST
+        headers:
+          Content-Type: "multipart/form-data"
+        body_format: form-multipart
+        body:
+          file: "{{ lookup('file', '/runner/project/output/prowler-report.csv') }}"
+        status_code: 200
+      register: api_upload_response
+      ignore_errors: yes
+
+    - name: Show API upload response
+      debug:
+        var: api_upload_response
