@@ -1,102 +1,44 @@
 ---
-- name: Run Prowler Docker Container using either Access Key or ARN with Web Identity Token
+- name: Run Prowler Docker Container using AWX Credentials
   hosts: localhost
   become: True
-
-  vars_prompt:
-    - name: choice
-      prompt: "Choose an option (1 for Access Key/Secret, 2 for ARN with Web Identity Token)"
-      private: no
-
-    - name: aws_access_key
-      prompt: "Enter AWS Access Key (only required for option 1)"
-      private: yes
-      default: ""
-    
-    - name: aws_secret_key
-      prompt: "Enter AWS Secret Key (only required for option 1)"
-      private: yes
-      default: ""
-
-    - name: role_arn
-      prompt: "Enter the Role ARN (only required for option 2)"
-      private: no
-      default: ""
-    
-    - name: region
-      prompt: "Enter the AWS region"
-      private: no
-
-    - name: services
-      prompt: "Enter the list of services (e.g., 's3,vpc,elb')"
-      private: no
-
-    - name: web_identity_token
-      prompt: "Enter the path to the web identity token (only required for option 2)"
-      private: no
-      default: ""
-
   tasks:
-    - name: Debug the value of choice
+    - name: Execute Prowler commands for elb using credentials from AWX and generate CSV output
+      shell: |
+        AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
+        AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
+        prowler aws --services elb -M csv
+      register: prowler_output
+      ignore_errors: yes
+      
+
+    #- name: Wait for the CSV file to be generated
+     # wait_for:
+      #  path: "/runner/project/output/prowler-output-*.csv"
+       # state: present
+        #timeout: 60
+
+    - name: Find the CSV file
+      find:
+        paths: "/runner/project/output/"
+        patterns: "prowler-output-*.csv"
+      register: csv_file
+
+    - name: Read the CSV file
+      command: cat "{{ csv_file.files[0].path }}"
+      register: csv_output
+
+    - name: Display the CSV output of Prowler commands
       debug:
-        var: choice
+        msg: "{{ csv_output.stdout }}"
 
-    - name: Validate user choice
-      fail:
-        msg: "Invalid choice. Please choose 1 for Access Key/Secret or 2 for ARN with Web Identity Token."
-      when: choice not in ['1', '2']
+    - name: Display using the echo command
+      shell: echo "{{ prowler_output.stdout }}"
 
-    - name: Check if Access Key and Secret Key are required but not provided
-      fail:
-        msg: "Access Key and Secret Key are required for option 1"
-      when: choice == '1' and (aws_access_key == "" or aws_secret_key == "")
+    - name: Display Prowler version
+      shell: prowler --version
+      register: prowler_version_output
 
-    - name: Check if role ARN is required but not provided
-      fail:
-        msg: "Role ARN is required for option 2"
-      when: choice == '2' and role_arn == ""
-
-    - name: Check if web identity token is required but not provided
-      fail:
-        msg: "Web identity token is required for option 2"
-      when: choice == '2' and web_identity_token == ""
-
-    # Option 1: Using Access Key and Secret Key
-    - name: Execute Prowler commands using Access Key and Secret Key
-      shell: |
-        AWS_ACCESS_KEY_ID={{ aws_access_key }} \
-        AWS_SECRET_ACCESS_KEY={{ aws_secret_key }} \
-        prowler aws --services {{ services }} -M csv
-      register: prowler_output_access
-      ignore_errors: yes
-      when: choice == '1'
-
-    # Option 2: Using ARN with Web Identity Token
-    - name: Assume Role with AWS STS using Web Identity Token
-      shell: |
-        aws sts assume-role-with-web-identity --role-arn {{ role_arn }} --role-session-name prowlerSession --region {{ region }} --output json --web-identity-token {{ web_identity_token }}
-      register: sts_output_web_identity
-      ignore_errors: yes
-      when: choice == '2'
-
-    - name: Parse STS output for Web Identity Token
-      set_fact:
-        aws_access_key_id_web: "{{ sts_output_web_identity.stdout | from_json | json_query('Credentials.AccessKeyId') }}"
-        aws_secret_access_key_web: "{{ sts_output_web_identity.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
-        aws_session_token_web: "{{ sts_output_web_identity.stdout | from_json | json_query('Credentials.SessionToken') }}"
-      when: choice == '2'
-
-    - name: Execute Prowler commands using assumed role credentials for Web Identity Token
-      shell: |
-        AWS_ACCESS_KEY_ID={{ aws_access_key_id_web }} \
-        AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key_web }} \
-        AWS_SESSION_TOKEN={{ aws_session_token_web }} \
-        prowler aws --services {{ services }} -M csv
-      register: prowler_output_web_identity
-      ignore_errors: yes
-      when: choice == '2'
-
-    # Common Task: Display Prowler output
-    - name: Display Prowler output
+    - name: Display Prowler version output
       debug:
-        var: prowler_output_access.stdout if choice == '1' else prowler_output_web_identity.stdout
+        var: prowler_version_output.stdout
