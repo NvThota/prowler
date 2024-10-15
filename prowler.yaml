@@ -3,10 +3,9 @@
   hosts: localhost
   become: True
 
-  vars_prompt:
-    - name: choice
-      prompt: "Choose an option (1 to run with Access Key/Secret, anything else to skip)"
-      private: no
+  vars:
+    # Default choice; can be overridden in AWX as a parameter
+    choice: "{{ choice_param | default('') }}"
 
   tasks:
     - name: Debug user choice
@@ -16,7 +15,7 @@
     - name: Validate user choice
       fail:
         msg: "Invalid choice. Please choose '1' to run or any other key to skip."
-      when: (choice | regex_replace('^Option 1: ', '') | trim) not in ['1']  # Extract only the numeric part
+      when: choice != '1'
 
     # This task and the following ones will run as long as choice is '1'
     - name: Execute Prowler commands for elb using credentials from AWX and generate CSV output
