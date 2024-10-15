@@ -3,38 +3,14 @@
   hosts: localhost
   become: True
 
-  vars_prompt:
-    - name: choice
-      prompt: "Choose an option (1 for Access Key/Secret, 2 for ARN with Web Identity Token)"
-      private: no
-
-    - name: aws_access_key
-      prompt: "Enter AWS Access Key (only required for option 1)"
-      private: yes
-      default: ""
-    
-    - name: aws_secret_key
-      prompt: "Enter AWS Secret Key (only required for option 1)"
-      private: yes
-      default: ""
-
-    - name: role_arn
-      prompt: "Enter the Role ARN (only required for option 2)"
-      private: no
-      default: ""
-    
-    - name: region
-      prompt: "Enter the AWS region"
-      private: no
-
-    - name: services
-      prompt: "Enter the list of services (e.g., 's3,vpc,elb')"
-      private: no
-
-    - name: web_identity_token
-      prompt: "Enter the path to the web identity token (only required for option 2)"
-      private: no
-      default: ""
+  vars:
+    choice: "{{ choice }}"
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    role_arn: "{{ role_arn }}"
+    region: "{{ region }}"
+    services: "{{ services }}"
+    web_identity_token: "{{ web_identity_token }}"
 
   tasks:
     - name: Validate user choice
