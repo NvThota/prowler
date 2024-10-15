@@ -16,8 +16,9 @@
     - name: Validate user choice
       fail:
         msg: "Invalid choice. Please choose '1' to run or any other key to skip."
-      when: choice not in ['1']
+      when: choice | regex_replace('^.*: ', '') not in ['1']  # Extract only the numeric part
 
+    # This task and the following ones will run as long as choice is '1'
     - name: Execute Prowler commands for elb using credentials from AWX and generate CSV output
       shell: |
         AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
