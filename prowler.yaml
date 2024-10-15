@@ -2,26 +2,21 @@
 - name: Run Prowler Docker Container using AWX Credentials
   hosts: localhost
   become: True
-  gather_facts: no
 
   vars_prompt:
     - name: choice
-      prompt: "Choose an option (1 to run with Access Key/Secret, anything else to skip):"
+      prompt: "Choose an option (1 to run with Access Key/Secret, anything else to skip)"
       private: no
 
   tasks:
-    - name: Start Prowler Execution
+    - name: Debug user choice
       debug:
-        msg: "Starting Prowler execution..."
+        msg: "User choice is: '{{ choice }}'"
 
     - name: Validate user choice
-      block:
-        - fail:
-            msg: "Invalid choice. Please choose '1' to run or any other key to skip."
-          when: choice not in ['1']
-
-        - debug:
-            msg: "User chose option {{ choice }}."
+      fail:
+        msg: "Invalid choice. Please choose '1' to run or any other key to skip."
+      when: choice not in ['1']
 
     - name: Execute Prowler commands for elb using credentials from AWX and generate CSV output
       shell: |
@@ -29,13 +24,7 @@
         AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
         prowler aws --services elb -M csv
       register: prowler_output
-      when: choice == '1'
       ignore_errors: yes
-
-    - name: Display Prowler output
-      debug:
-        msg: "Prowler command executed. Output:"
-      when: prowler_output.stdout | length > 0
 
     - name: Find the CSV file
       find:
@@ -43,20 +32,13 @@
         patterns: "prowler-output-*.csv"
       register: csv_file
 
-    - name: Display found CSV file
-      debug:
-        msg: "Found CSV file: {{ csv_file.files[0].path }}"
-      when: csv_file.matched > 0
-
     - name: Read the CSV file
       command: cat "{{ csv_file.files[0].path }}"
       register: csv_output
-      when: csv_file.matched > 0
 
     - name: Display the CSV output of Prowler commands
       debug:
         msg: "{{ csv_output.stdout }}"
-      when: csv_output.stdout | length > 0
 
     - name: Display using the echo command
       shell: echo "{{ prowler_output.stdout }}"
@@ -67,8 +49,4 @@
 
     - name: Display Prowler version output
       debug:
-        msg: "Prowler version: {{ prowler_version_output.stdout }}"
-
-    - name: Execution Complete
-      debug:
-        msg: "Prowler execution completed successfully."
+        var: prowler_version_output.stdout
