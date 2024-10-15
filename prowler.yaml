@@ -9,10 +9,10 @@
       private: no
 
   tasks:
-    #- name: Validate user choice
-      #fail:
-        #msg: "Invalid choice. Please choose 1 to run or skip."
-      #when: choice not in ['1']
+    - name: Validate user choice
+      fail:
+        msg: "Invalid choice. Please choose 1 to run or skip."
+      when: choice not in ['1']
 
     # This task and the following ones will run as long as choice is '1'
     - name: Execute Prowler commands for elb using credentials from AWX and generate CSV output
