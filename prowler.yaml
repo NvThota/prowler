@@ -13,6 +13,10 @@
     web_identity_token: "{{ web_identity_token }}"
 
   tasks:
+    - name: Debug the value of choice
+      debug:
+      var: choice
+
     - name: Validate user choice
       fail:
         msg: "Invalid choice. Please choose 1 for Access Key/Secret or 2 for ARN with Web Identity Token."
