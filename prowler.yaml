@@ -15,7 +15,7 @@
     - name: Validate user choice
       fail:
         msg: "Invalid choice. Please choose '1' to run or any other key to skip."
-      when: choice != '1'
+      when: choice != 1
 
     # This task and the following ones will run as long as choice is '1'
     - name: Execute Prowler commands for elb using credentials from AWX and generate CSV output
