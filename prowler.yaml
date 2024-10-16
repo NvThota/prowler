@@ -27,12 +27,13 @@
         msg: "Using AWS Access Key and Secret Key for authentication."
       when: choice == 1
 
-    - name: Execute Prowler using AWS credentials from AWX (choice 1)
+    - name: Execute Prowler using AWS credentials with environment lookup (choice 1)
       shell: |
-        AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
-        AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
+        AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') or aws_access_key_id }} \
+        AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') or aws_secret_access_key }} \
         prowler aws --services {{ services }} -M csv --verbose
       register: prowler_output
+      ignore_errors: yes
       when: choice == 1
 
     # Additional tasks for Choice 1
@@ -88,12 +89,12 @@
 
     - name: Run Prowler for specified AWS services with assumed role credentials (choice 2)
       shell: |
+        AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
+        AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
+        AWS_SESSION_TOKEN={{ aws_session_token }} \
         prowler aws --services {{ services }} -M csv --verbose
-      environment:
-        AWS_ACCESS_KEY_ID: "{{ aws_access_key_id }}"
-        AWS_SECRET_ACCESS_KEY: "{{ aws_secret_access_key }}"
-        AWS_SESSION_TOKEN: "{{ aws_session_token }}"
       register: prowler_output
+      ignore_errors: yes
       when: choice == 2
 
     # Additional tasks for Choice 2
