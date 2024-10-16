@@ -1,21 +1,29 @@
-- name: Run Prowler Docker Container using AWX Credentials
+ name: Run Prowler Docker Container using AWX Credentials
   hosts: localhost
   become: True
+
+  vars:
+    # Define the services you want to scan, separated by commas
+    services: "elb,s3,ec2"  # You can change this to any services you need
+
   tasks:
-    - name: Execute Prowler commands for elb using credentials from AWX and generate CSV output
+    - name: Debug user choice
+      debug:
+        msg: "User choice is: '{{ choice }}'"
+
+    - name: Validate user choice
+      fail:
+        msg: "Invalid choice. Please choose '1' to run or any other key to skip."
+      when: choice != 1
+
+    # This task and the following ones will run as long as choice is '1'
+    - name: Execute Prowler commands for specified services using credentials from AWX and generate CSV output
       shell: |
         AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
         AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
-        prowler aws --services elb -M csv
+        prowler aws --services {{ services }} -M csv
       register: prowler_output
       ignore_errors: yes
-      
-
-    #- name: Wait for the CSV file to be generated
-     # wait_for:
-      #  path: "/runner/project/output/prowler-output-*.csv"
-       # state: present
-        #timeout: 60
 
     - name: Find the CSV file
       find:
