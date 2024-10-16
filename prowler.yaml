@@ -1,25 +1,30 @@
 ---
-- name: Assume Role and Run Prowler
+- name: Assume Role and Run Prowler with Detailed Logging
   hosts: localhost
   become: true
   vars:
     role_arn: "arn:aws:iam::663552238330:role/prowler"  # Replace with your role ARN
     role_session_name: "prowlerSession"
     services: "elb"  # Specify the AWS services to scan with Prowler
+    choice: "{{ choice }}"  # This value will be passed from AWX survey or command line
 
   tasks:
+    - name: Check if the user chose '2' to trigger the job
+      debug:
+        msg: "Job will run since choice is 2."
+      when: choice == '2'
+
     - name: Assume the AWS Role
       shell: |
         aws sts assume-role --role-arn {{ role_arn }} --role-session-name {{ role_session_name }} --output json
       register: assume_role_output
-      changed_when: false
 
-    - name: Set AWS Credentials from Assume Role
+    - name: Parse and extract AWS credentials
       set_fact:
         aws_access_key_id: "{{ assume_role_output.stdout | from_json | json_query('Credentials.AccessKeyId') }}"
         aws_secret_access_key: "{{ assume_role_output.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
         aws_session_token: "{{ assume_role_output.stdout | from_json | json_query('Credentials.SessionToken') }}"
-    
+
     - name: Export AWS environment variables
       shell: |
         export AWS_ACCESS_KEY_ID={{ aws_access_key_id }}
@@ -30,9 +35,9 @@
         AWS_SECRET_ACCESS_KEY: "{{ aws_secret_access_key }}"
         AWS_SESSION_TOKEN: "{{ aws_session_token }}"
 
-    - name: Run Prowler for specified AWS services
+    - name: Run Prowler for specified AWS services with verbose output
       shell: |
-        prowler aws --services {{ services }}
+        prowler aws --services {{ services }} -M csv --verbose  # Adding --verbose flag for Prowler
       environment:
         AWS_ACCESS_KEY_ID: "{{ aws_access_key_id }}"
         AWS_SECRET_ACCESS_KEY: "{{ aws_secret_access_key }}"
@@ -42,3 +47,7 @@
     - name: Display Prowler output
       debug:
         msg: "{{ prowler_output.stdout }}"
+
+    - name: Display Prowler output in detailed JSON format
+      debug:
+        var: prowler_output
