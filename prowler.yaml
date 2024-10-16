@@ -4,11 +4,11 @@
   become: true
 
   vars:
-    services: "{{ services | default('elb,s3,ec2') }}"  # AWS services to scan, can be passed from survey
-    choice: "{{ choice }}"  # This will be passed from AWX survey
-    aws_access_key_id: "{{ aws_access_key_id }}"  # AWS Access Key from survey for choice 1
-    aws_secret_access_key: "{{ aws_secret_access_key }}"  # AWS Secret Key from survey for choice 1
-    role_arn: "{{ role_arn }}"  # ARN for role assumption for choice 2
+    services: "{{ services | default('elb,s3,ec2') }}"  # AWS services to scan, passed from survey
+    choice: "{{ choice }}"  # User's selection (1 for Access Key/Secret Key, 2 for ARN)
+    aws_access_key_id: "{{ aws_access_key_id }}"  # AWS Access Key from survey
+    aws_secret_access_key: "{{ aws_secret_access_key }}"  # AWS Secret Key from survey
+    role_arn: "{{ role_arn }}"  # ARN for role assumption
     role_session_name: "prowlerSession"  # Role session name for choice 2
 
   tasks:
@@ -27,7 +27,7 @@
         msg: "Using AWS Access Key and Secret Key for authentication."
       when: choice == 1
 
-    - name: Execute Prowler using AWS credentials from survey (choice 1)
+    - name: Execute Prowler using AWS credentials from AWX (choice 1)
       shell: |
         AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
         AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
