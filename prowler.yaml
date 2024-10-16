@@ -1,130 +1,43 @@
----
-- name: Run Prowler based on user choices (AWS Access Key/Secret Key or ARN)
+- name: Run Prowler Docker Container using AWX Credentials
   hosts: localhost
-  become: true
-
-  vars:
-    services: "{{ services | default('elb,s3,ec2') }}"  # AWS services to scan, passed from survey
-    choice: "{{ choice }}"  # User's selection (1 for Access Key/Secret Key, 2 for ARN)
-    aws_access_key_id: "{{ aws_access_key_id }}"  # AWS Access Key from survey
-    aws_secret_access_key: "{{ aws_secret_access_key }}"  # AWS Secret Key from survey
-    role_arn: "{{ role_arn }}"  # ARN for role assumption
-    role_session_name: "prowlerSession"  # Role session name for choice 2
-
+  become: True
   tasks:
-    - name: Debug user choice
-      debug:
-        msg: "User choice is: '{{ choice }}'"
-
-    - name: Validate user choice
-      fail:
-        msg: "Invalid choice. Please select 1 to use AWS keys or 2 to assume a role with ARN."
-      when: choice not in [1, 2]
-
-    # Choice 1: Use AWS credentials passed from the survey (AWS Access Key/Secret Key)
-    - name: Check if the user chose 1 to use AWS credentials
-      debug:
-        msg: "Using AWS Access Key and Secret Key for authentication."
-      when: choice == 1
-
-    - name: Execute Prowler using AWS credentials with environment lookup (choice 1)
+    - name: Execute Prowler commands for elb using credentials from AWX and generate CSV output
       shell: |
-        AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') or aws_access_key_id }} \
-        AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') or aws_secret_access_key }} \
-        prowler aws --services {{ services }} -M csv --verbose
+        AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
+        AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
+        prowler aws --services elb -M csv
       register: prowler_output
       ignore_errors: yes
-      when: choice == 1
+      
 
-    # Additional tasks for Choice 1
-    - name: Find the CSV file (choice 1)
+    #- name: Wait for the CSV file to be generated
+     # wait_for:
+      #  path: "/runner/project/output/prowler-output-*.csv"
+       # state: present
+        #timeout: 60
+
+    - name: Find the CSV file
       find:
         paths: "/runner/project/output/"
         patterns: "prowler-output-*.csv"
       register: csv_file
-      when: choice == 1
 
-    - name: Read the CSV file (choice 1)
+    - name: Read the CSV file
       command: cat "{{ csv_file.files[0].path }}"
       register: csv_output
-      when: choice == 1
 
-    - name: Display the CSV output of Prowler commands (choice 1)
+    - name: Display the CSV output of Prowler commands
       debug:
         msg: "{{ csv_output.stdout }}"
-      when: choice == 1
 
-    - name: Display using the echo command (choice 1)
+    - name: Display using the echo command
       shell: echo "{{ prowler_output.stdout }}"
-      when: choice == 1
 
-    - name: Display Prowler version (choice 1)
+    - name: Display Prowler version
       shell: prowler --version
       register: prowler_version_output
-      when: choice == 1
 
-    - name: Display Prowler version output (choice 1)
+    - name: Display Prowler version output
       debug:
         var: prowler_version_output.stdout
-      when: choice == 1
-
-    # Choice 2: Assume an AWS role using the ARN passed from the survey
-    - name: Check if the user chose 2 to assume a role using ARN
-      debug:
-        msg: "Assuming role using ARN for authentication."
-      when: choice == 2
-
-    - name: Assume the AWS Role (choice 2)
-      shell: |
-        aws sts assume-role --role-arn {{ role_arn }} --role-session-name {{ role_session_name }} --output json
-      register: assume_role_output
-      when: choice == 2
-
-    - name: Parse and extract AWS credentials from assumed role (choice 2)
-      set_fact:
-        aws_access_key_id: "{{ assume_role_output.stdout | from_json | json_query('Credentials.AccessKeyId') }}"
-        aws_secret_access_key: "{{ assume_role_output.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
-        aws_session_token: "{{ assume_role_output.stdout | from_json | json_query('Credentials.SessionToken') }}"
-      when: choice == 2
-
-    - name: Run Prowler for specified AWS services with assumed role credentials (choice 2)
-      shell: |
-        AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
-        AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
-        AWS_SESSION_TOKEN={{ aws_session_token }} \
-        prowler aws --services {{ services }} -M csv --verbose
-      register: prowler_output
-      ignore_errors: yes
-      when: choice == 2
-
-    # Additional tasks for Choice 2
-    - name: Find the CSV file (choice 2)
-      find:
-        paths: "/runner/project/output/"
-        patterns: "prowler-output-*.csv"
-      register: csv_file
-      when: choice == 2
-
-    - name: Read the CSV file (choice 2)
-      command: cat "{{ csv_file.files[0].path }}"
-      register: csv_output
-      when: choice == 2
-
-    - name: Display the CSV output of Prowler commands (choice 2)
-      debug:
-        msg: "{{ csv_output.stdout }}"
-      when: choice == 2
-
-    - name: Display using the echo command (choice 2)
-      shell: echo "{{ prowler_output.stdout }}"
-      when: choice == 2
-
-    - name: Display Prowler version (choice 2)
-      shell: prowler --version
-      register: prowler_version_output
-      when: choice == 2
-
-    - name: Display Prowler version output (choice 2)
-      debug:
-        var: prowler_version_output.stdout
-      when: choice == 2
