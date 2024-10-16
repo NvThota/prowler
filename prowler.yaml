@@ -16,13 +16,13 @@
 
     - name: Validate user choice
       fail:
-        msg: "Invalid choice. Please choose '1' for AWS credentials or '2' for ARN role assumption."
-      when: choice not in ['1', '2']
+        msg: "Invalid choice. Please choose 1 for AWS credentials or 2 for ARN role assumption."
+      when: choice not in [1, 2]
 
-    - name: Check if the user chose '1' to use AWS credentials from environment
+    - name: Check if the user chose 1 to use AWS credentials from environment
       debug:
         msg: "Job will run using AWS credentials from environment variables."
-      when: choice == '1'
+      when: choice == 1
 
     - name: Execute Prowler commands for specified services using AWS credentials (choice 1)
       shell: |
@@ -30,25 +30,25 @@
         AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
         prowler aws --services {{ services }} -M csv --verbose
       register: prowler_output
-      when: choice == '1'
+      when: choice == 1
 
-    - name: Check if the user chose '2' to assume role via ARN
+    - name: Check if the user chose 2 to assume role via ARN
       debug:
         msg: "Job will run by assuming the AWS role."
-      when: choice == '2'
+      when: choice == 2
 
     - name: Assume the AWS Role (choice 2)
       shell: |
         aws sts assume-role --role-arn {{ role_arn }} --role-session-name {{ role_session_name }} --output json
       register: assume_role_output
-      when: choice == '2'
+      when: choice == 2
 
     - name: Parse and extract AWS credentials (choice 2)
       set_fact:
         aws_access_key_id: "{{ assume_role_output.stdout | from_json | json_query('Credentials.AccessKeyId') }}"
         aws_secret_access_key: "{{ assume_role_output.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
         aws_session_token: "{{ assume_role_output.stdout | from_json | json_query('Credentials.SessionToken') }}"
-      when: choice == '2'
+      when: choice == 2
 
     - name: Export AWS environment variables (choice 2)
       shell: |
@@ -59,7 +59,7 @@
         AWS_ACCESS_KEY_ID: "{{ aws_access_key_id }}"
         AWS_SECRET_ACCESS_KEY: "{{ aws_secret_access_key }}"
         AWS_SESSION_TOKEN: "{{ aws_session_token }}"
-      when: choice == '2'
+      when: choice == 2
 
     - name: Run Prowler for specified AWS services with verbose output (choice 2)
       shell: |
@@ -69,7 +69,7 @@
         AWS_SECRET_ACCESS_KEY: "{{ aws_secret_access_key }}"
         AWS_SESSION_TOKEN: "{{ aws_session_token }}"
       register: prowler_output
-      when: choice == '2'
+      when: choice == 2
 
     - name: Find the CSV file
       find:
