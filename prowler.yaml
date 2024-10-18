@@ -8,8 +8,8 @@
     region: "us-west-2"  # Specify the region for scans
     compliance_value: "cis-1.2"  # Example compliance value (adjust as needed)
     role_session_name: "prowlerSession"  # Session name when assuming a role (Choice 2)
-    # Add scan_type variable to choose between compliance or services scan
     scan_type: "services"  # Options: 'services' or 'compliance'
+    api_url: "https://dev.concierto.cloud/api/masterService/uploadFileForClient"  # Backend API URL
 
   tasks:
     - name: Debug user choice
@@ -56,31 +56,21 @@
         paths: "/runner/project/output/"
         patterns: "prowler-output-*.csv"
       register: csv_file
-      when: choice == 1 and scan_type == "services"
+      
 
     - name: Read the CSV file (Choice 1)
       command: cat "{{ csv_file.files[0].path }}"
       register: csv_output
-      when: choice == 1 and scan_type == "services"
+      
 
     - name: Display the CSV output of Prowler commands (Choice 1)
       debug:
         msg: "{{ csv_output.stdout }}"
-      when: choice == 1 and scan_type == "services"
+      
 
     - name: Display using the echo command (Choice 1)
       shell: echo "{{ prowler_output.stdout }}"
-      when: choice == 1
-
-    - name: Display Prowler version (Choice 1)
-      shell: prowler --version
-      register: prowler_version_output
-      when: choice == 1
-
-    - name: Display Prowler version output (Choice 1)
-      debug:
-        var: prowler_version_output.stdout
-      when: choice == 1
+      
 
     # Choice 2: Assume an AWS role using ARN
     - name: Display message for ARN-based authentication (Choice 2)
@@ -140,16 +130,19 @@
         msg: "{{ csv_output.stdout }}"
       when: choice == 2 and scan_type == "services"
 
-    - name: Display using the echo command (Choice 2)
-      shell: echo "{{ prowler_output.stdout }}"
-      when: choice == 2
-
-    - name: Display Prowler version (Choice 2)
-      shell: prowler --version
-      register: prowler_version_output
-      when: choice == 2
-
-    - name: Display Prowler version output (Choice 2)
+    # Upload the CSV file to Backend API
+    - name: Upload CSV to Backend API
+      uri:
+        url: "{{ api_url }}"
+        method: POST
+        headers:
+          Content-Type: "multipart/form-data"
+        body_format: multipart
+        body:
+          file: "{{ lookup('file', csv_file.files[0].path) }}"
+        return_content: yes
+      register: upload_response
+      
+    - name: Display API response
       debug:
-        var: prowler_version_output.stdout
-      when: choice == 2
+        var: upload_response
