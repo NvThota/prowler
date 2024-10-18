@@ -130,20 +130,35 @@
         msg: "{{ csv_output.stdout }}"
       when: choice == 2 and scan_type == "services"
 
-    # Upload the CSV file to Backend API
-    - name: Upload CSV to Backend API
-      uri:
-        url: "{{ api_url }}"
-        method: POST
-        headers:
-          Authorization: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
-          Content-Type: "multipart/form-data"
-        body_format: multipart
-        body:
-          file: "{{ lookup('file', csv_file.files[0].path) }}"
-        return_content: yes
-      register: upload_response
-      
-    - name: Display API response
-      debug:
-        var: upload_response
+	# Find the CSV file (both for Choice 1 and 2, Compliance or Services)
+	- name: Find the CSV file
+	  find:
+		paths: "/runner/project/output/"
+		patterns: "prowler-output-*.csv"
+	  register: csv_file
+
+	# Check if CSV file exists before uploading
+	- name: Fail if no CSV file was found
+	  fail:
+		msg: "No CSV file found for upload."
+	  when: csv_file.matched == 0
+
+	# Read the CSV file before upload
+	- name: Read the CSV file
+	  command: cat "{{ csv_file.files[0].path }}"
+	  register: csv_output
+	  when: csv_file.matched > 0
+
+	# Upload the CSV file to Backend API
+	- name: Upload CSV to Backend API
+	  uri:
+		url: "https://dev.concierto.cloud/api/masterService/uploadFileForClient"
+		method: POST
+		headers:
+		  Content-Type: "multipart/form-data"
+		  # If API token is required, uncomment the next line and provide the token
+		  Authorization: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
+		body_format: form-multipart
+		body:
+		  file: "{{ lookup('file', csv_file.files[0].path) }}"
+	  when: csv_file.matched > 0
