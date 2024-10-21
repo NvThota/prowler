@@ -123,4 +123,8 @@
           file: 
             content: "{{ lookup('file', json_file.files[0].path) }}"  # Reading the JSON file content
             filename: "{{ json_file.files[0].path | basename }}"
+      register: upload_response
       when: json_file.matched > 0
+    - name: Debug API response
+      debug:
+        var: upload_response
