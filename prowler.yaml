@@ -120,5 +120,7 @@
           Content-Type: "multipart/form-data"
         body_format: form-multipart
         body:
-          file: "{{ lookup('file', json_file.files[0].path) }}"
+          file: 
+            content: "{{ lookup('file', json_file.files[0].path) }}"  # Reading the JSON file content
+            filename: "{{ json_file.files[0].path | basename }}"
       when: json_file.matched > 0
