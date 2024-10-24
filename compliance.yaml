@@ -58,12 +58,14 @@
       debug:
         msg: "Proceeding with role assumption using ARN: {{ role_arn }} and session name: {{ role_session_name }}."
       when: choice == 2
+      no_log: true
 
     - name: Assume the AWS Role (Choice 2)
       shell: |
         aws sts assume-role --role-arn {{ role_arn }} --role-session-name {{ role_session_name }} --output json
       register: assume_role_output
       when: choice == 2
+      no_log: true
 
     - name: Parse and extract AWS credentials from assumed role (Choice 2)
       set_fact:
@@ -71,6 +73,7 @@
         aws_secret_access_key: "{{ assume_role_output.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
         aws_session_token: "{{ assume_role_output.stdout | from_json | json_query('Credentials.SessionToken') }}"
       when: choice == 2
+      no_log: true
 
     # Choice 2: Compliance check
     - name: Execute compliance check with assumed role credentials (Choice 2 - Compliance)
@@ -114,6 +117,7 @@
         paths: "/runner/project/output/"
         patterns: "prowler-output-*.json"
       register: json_file
+      no_log: true
 
     # Check if JSON file exists before renaming
     - name: Fail if no JSON file was found
