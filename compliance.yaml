@@ -106,6 +106,7 @@
     - name: Display compliance scan results
       debug:
         var: compliance_output_modified
+      no_log: true
 
     # Find the JSON file (both for Choice 1 and 2)
     - name: Find the JSON file
