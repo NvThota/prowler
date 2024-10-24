@@ -138,6 +138,7 @@
         renamed_file_path: "{{ json_file.files[0].path | regex_replace('prowler', 'healthcheck') }}"
       when: json_file.matched > 0
       #no_log: true
+      
     - name: Check if renamed JSON file exists
       stat:
         path: "{{ renamed_file_path }}"
@@ -160,7 +161,7 @@
         body_format: form-multipart
         body:
           file:
-            src: "{{ renamed_file_path }}"  # Path to the renamed JSON file
+            src: "/runner/project/output/"  # Path to the renamed JSON file
             filename: "{{ renamed_file_path | basename }}"
             remote_src: yes
       register: upload_response
