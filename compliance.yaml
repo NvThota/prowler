@@ -160,7 +160,7 @@
     # Pause for 2 minutes before uploading the file
     - name: Wait for 2 minutes before uploading the JSON file
       pause:
-        seconds: 120  
+        seconds: 1200 
 
     # Debug API response
     - name: Debug API response
