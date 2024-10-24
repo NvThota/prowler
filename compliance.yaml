@@ -130,14 +130,14 @@
       command: mv "{{ json_file.files[0].path }}" "{{ json_file.files[0].path | regex_replace('prowler', 'healthcheck') }}"
       register: renamed_file
       when: json_file.matched > 0
-      no_log: true
+      #no_log: true
 
     # Set fact with renamed file path
     - name: Set renamed file path
       set_fact:
         renamed_file_path: "{{ json_file.files[0].path | regex_replace('prowler', 'healthcheck') }}"
       when: json_file.matched > 0
-      no_log: true
+      #no_log: true
 
     # Upload the renamed JSON file to Backend API
     - name: Upload JSON file to Backend API
