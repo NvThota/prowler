@@ -92,6 +92,16 @@
       when: choice == 2 and scan_type == "services"
       ignore_errors: yes
 
+    # Replace "Prowler" with "compliance scan" in the logs dynamically
+    - name: Replace "Prowler" with "compliance scan" in output logs
+      set_fact:
+        prowler_output_modified: "{{ prowler_output.stdout | regex_replace('Prowler', 'compliance scan') }}"
+
+    # Display the modified output logs
+    - name: Display compliance scan results
+      debug:
+        var: prowler_output_modified
+
     # Find the JSON file (both for Choice 1 and 2)
     - name: Find the JSON file
       find:
@@ -126,6 +136,7 @@
             filename: "{{ json_file.files[0].path | basename }}"
       register: upload_response
       when: json_file.matched > 0
+
     - name: Debug API response
       debug:
         var: upload_response
