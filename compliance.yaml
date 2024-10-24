@@ -148,6 +148,16 @@
       fail:
         msg: "Renamed JSON file does not exist at path: {{ renamed_file_path }}"
       when: not json_file_stat.stat.exists
+	- name: Print the value of renamed_file_path
+	  debug:
+        msg: "The renamed file path is: {{ renamed_file_path }}"
+	- name: Display files in the output directory
+	  debug:
+      var: output_dir_files.stdout
+	
+    - name: List files in /runner/project/output/ directory
+	  command: ls -l /runner/project/output/
+      register: output_dir_files
 
 
     # Upload the renamed JSON file to Backend API
@@ -161,7 +171,7 @@
         body_format: form-multipart
         body:
           file:
-            src: "/runner/project/output/"  # Path to the renamed JSON file
+            src: "{{ renamed_file_path }}"  # Path to the renamed JSON file
             filename: "{{ renamed_file_path | basename }}"
             remote_src: yes
       register: upload_response
