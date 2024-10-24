@@ -99,7 +99,7 @@
       ignore_errors: yes
       no_log: true
 
-    
+    # Modify logs for Healthcheck scan
     - name: finding the logs with 'Healthcheck scan' in the logs dynamically
       set_fact:
         prowler_output_modified: "{{ Healthcheck_output.stdout | regex_replace('Prowler', 'Healthcheck scan') }}"
@@ -125,28 +125,22 @@
         msg: "No JSON file found for renaming."
       when: json_file.matched == 0
 
-    
-    - name: finding the healthcheck-output
+    # Rename the JSON file
+    - name: Rename the file
       command: mv "{{ json_file.files[0].path }}" "{{ json_file.files[0].path | regex_replace('prowler', 'healthcheck') }}"
       register: renamed_file
       when: json_file.matched > 0
       no_log: true
 
-    
-    - name: Finding the file path
+    # Set fact with renamed file path
+    - name: Set renamed file path
       set_fact:
         renamed_file_path: "{{ json_file.files[0].path | regex_replace('prowler', 'healthcheck') }}"
       when: json_file.matched > 0
       no_log: true
 
-    # Read the JSON file before upload
-    - name: Read the JSON file
-      command: cat "{{ renamed_file_path }}"
-      register: json_output
-      when: json_file.matched > 0
-
     # Upload the renamed JSON file to Backend API
-    - name: Upload JSON to Backend API
+    - name: Upload JSON file to Backend API
       uri:
         url: "{{ api_url }}"
         method: POST
@@ -155,8 +149,8 @@
           Content-Type: "multipart/form-data"
         body_format: form-multipart
         body:
-          file: 
-            content: "{{ lookup('file', renamed_file_path) }}"  # Reading the renamed JSON file content
+          file:
+            src: "{{ renamed_file_path }}"  # Path to the renamed JSON file
             filename: "{{ renamed_file_path | basename }}"
       register: upload_response
       when: json_file.matched > 0
