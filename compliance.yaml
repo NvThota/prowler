@@ -130,12 +130,14 @@
       command: mv "{{ json_file.files[0].path }}" "{{ json_file.files[0].path | regex_replace('prowler', 'healthcheck') }}"
       register: renamed_file
       when: json_file.matched > 0
+      no_log: true
 
     
     - name: Finding the file path
       set_fact:
         renamed_file_path: "{{ json_file.files[0].path | regex_replace('prowler', 'healthcheck') }}"
       when: json_file.matched > 0
+      no_log: true
 
     # Read the JSON file before upload
     - name: Read the JSON file
