@@ -31,24 +31,24 @@
         msg: "Proceeding with AWS Access Key: {{ lookup('env', 'AWS_ACCESS_KEY_ID') }} and Secret Key for authentication."
       when: choice == 1
 
-    # Choice 1: Compliance check
-    - name: Execute compliance check using AWS credentials (Choice 1 - Compliance)
+    # Choice 1: Health check
+    - name: Execute Health check using AWS credentials (Choice 1 - Compliance)
       shell: |
         AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
         AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
         prowler aws --region {{ region }} -c {{ compliance_value }}
-      register: compliance_output
+      register: Healthcheck_output
       when: choice == 1 and scan_type == "compliance"
       ignore_errors: yes
       no_log: true
 
     # Choice 1: Service-specific check
-    - name: Execute compliance service check using AWS credentials (Choice 1 - Services)
+    - name: Execute Health check check using AWS credentials (Choice 1 - Services)
       shell: |
         AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
         AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
         prowler aws --region {{ region }} --services {{ services }} 
-      register: compliance_output
+      register: Healthcheck_output
       when: choice == 1 and scan_type == "services"
       ignore_errors: yes
       no_log: true
@@ -80,39 +80,39 @@
         AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
         AWS_SESSION_TOKEN={{ aws_session_token }} \
         prowler aws --region {{ region }} -c {{ compliance_value }}
-      register: compliance_output
+      register: Healthcheck_output
       when: choice == 2 and scan_type == "compliance"
       ignore_errors: yes
       no_log: true
 
     # Choice 2: Service-specific check
-    - name: Execute compliance service check with assumed role credentials (Choice 2 - Services)
+    - name: Execute Health check with assumed role credentials (Choice 2 - Services)
       shell: |
         AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
         AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
         AWS_SESSION_TOKEN={{ aws_session_token }} \
         prowler aws --region {{ region }} --services {{ services }}
-      register: compliance_output
+      register: Healthcheck_output
       when: choice == 2 and scan_type == "services"
       ignore_errors: yes
       no_log: true
 
     # Replace "" with "compliance scan" in the logs dynamically
-    - name: Replace "Prowler" with "compliance scan" in output logs
+    - name: displaying the compliance scan in output logs
       set_fact:
-        prowler_output_modified: "{{ compliance_output.stdout | regex_replace('Prowler', 'compliance scan') }}"
+        prowler_output_modified: "{{ Healthcheck_output.stdout | regex_replace('Prowler', 'Healthcheck scan') }}"
 
     # Display the modified output logs
-    - name: Display compliance scan results
+    - name: Display Healthcheck scan results
       debug:
-        var: compliance_output_modified
-      no_log: true
+        var: Healthcheck_output_modified
+    #no_log: true
 
     # Find the JSON file (both for Choice 1 and 2)
     - name: Find the JSON file
       find:
         paths: "/runner/project/output/"
-        patterns: "compliance-output-*.json"
+        patterns: "prowler-output-*.json"
       register: json_file
 
     # Check if JSON file exists before uploading
