@@ -40,6 +40,7 @@
       register: compliance_output
       when: choice == 1 and scan_type == "compliance"
       ignore_errors: yes
+      no_log: true
 
     # Choice 1: Service-specific check
     - name: Execute compliance service check using AWS credentials (Choice 1 - Services)
@@ -50,6 +51,7 @@
       register: compliance_output
       when: choice == 1 and scan_type == "services"
       ignore_errors: yes
+      no_log: true
 
     # Choice 2: Assume an AWS role using ARN
     - name: Display message for ARN-based authentication (Choice 2)
@@ -69,6 +71,7 @@
         aws_secret_access_key: "{{ assume_role_output.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
         aws_session_token: "{{ assume_role_output.stdout | from_json | json_query('Credentials.SessionToken') }}"
       when: choice == 2
+      
 
     # Choice 2: Compliance check
     - name: Execute compliance check with assumed role credentials (Choice 2 - Compliance)
@@ -80,6 +83,7 @@
       register: compliance_output
       when: choice == 2 and scan_type == "compliance"
       ignore_errors: yes
+      no_log: true
 
     # Choice 2: Service-specific check
     - name: Execute compliance service check with assumed role credentials (Choice 2 - Services)
@@ -91,6 +95,7 @@
       register: compliance_output
       when: choice == 2 and scan_type == "services"
       ignore_errors: yes
+      no_log: true
 
     # Replace "" with "compliance scan" in the logs dynamically
     - name: Replace "Prowler" with "compliance scan" in output logs
