@@ -138,6 +138,16 @@
         renamed_file_path: "{{ json_file.files[0].path | regex_replace('prowler', 'healthcheck') }}"
       when: json_file.matched > 0
       #no_log: true
+    - name: Check if renamed JSON file exists
+      stat:
+        path: "{{ renamed_file_path }}"
+      register: json_file_stat
+
+    - name: Fail if renamed JSON file does not exist
+      fail:
+        msg: "Renamed JSON file does not exist at path: {{ renamed_file_path }}"
+      when: not json_file_stat.stat.exists
+
 
     # Upload the renamed JSON file to Backend API
     - name: Upload JSON file to Backend API
