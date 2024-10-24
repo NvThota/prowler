@@ -71,7 +71,6 @@
         aws_secret_access_key: "{{ assume_role_output.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
         aws_session_token: "{{ assume_role_output.stdout | from_json | json_query('Credentials.SessionToken') }}"
       when: choice == 2
-      
 
     # Choice 2: Compliance check
     - name: Execute compliance check with assumed role credentials (Choice 2 - Compliance)
@@ -97,16 +96,17 @@
       ignore_errors: yes
       no_log: true
 
-    # Replace "" with "compliance scan" in the logs dynamically
-    - name: displaying the compliance scan in output logs
+    # Replace "Prowler" with "compliance scan" in the logs dynamically
+    - name: Replace 'Prowler' with 'Healthcheck scan' in the logs dynamically
       set_fact:
         prowler_output_modified: "{{ Healthcheck_output.stdout | regex_replace('Prowler', 'Healthcheck scan') }}"
+      when: Healthcheck_output is defined and Healthcheck_output.stdout is defined
 
     # Display the modified output logs
     - name: Display Healthcheck scan results
       debug:
-        var: Healthcheck_output_modified
-    #no_log: true
+        var: prowler_output_modified
+      when: Healthcheck_output is defined and Healthcheck_output.stdout is defined
 
     # Find the JSON file (both for Choice 1 and 2)
     - name: Find the JSON file
