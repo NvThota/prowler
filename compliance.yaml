@@ -96,8 +96,8 @@
       ignore_errors: yes
       no_log: true
 
-    # Replace "Prowler" with "Healthcheck scan" in the logs dynamically
-    - name: Replace 'Prowler' with 'Healthcheck scan' in the logs dynamically
+    
+    - name: finding the logs with 'Healthcheck scan' in the logs dynamically
       set_fact:
         prowler_output_modified: "{{ Healthcheck_output.stdout | regex_replace('Prowler', 'Healthcheck scan') }}"
       when: Healthcheck_output is defined and Healthcheck_output.stdout is defined
@@ -121,20 +121,20 @@
         msg: "No JSON file found for renaming."
       when: json_file.matched == 0
 
-    # Rename the JSON file from prowler-output to healthcheck-output
-    - name: Rename JSON file from prowler-output to healthcheck-output
+    
+    - name: finding the healthcheck-output
       command: mv "{{ json_file.files[0].path }}" "{{ json_file.files[0].path | regex_replace('prowler', 'healthcheck') }}"
       register: renamed_file
       when: json_file.matched > 0
 
-    # Use the new path for the renamed file
-    - name: Set fact for renamed file path
+    
+    - name: Finding the file path
       set_fact:
         renamed_file_path: "{{ json_file.files[0].path | regex_replace('prowler', 'healthcheck') }}"
       when: json_file.matched > 0
 
-    # Read the renamed JSON file before upload
-    - name: Read the renamed JSON file
+    # Read the JSON file before upload
+    - name: Read the JSON file
       command: cat "{{ renamed_file_path }}"
       register: json_output
       when: json_file.matched > 0
