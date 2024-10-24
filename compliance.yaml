@@ -152,6 +152,7 @@
           file:
             src: "{{ renamed_file_path }}"  # Path to the renamed JSON file
             filename: "{{ renamed_file_path | basename }}"
+            remote_src: yes
       register: upload_response
       when: json_file.matched > 0
 
