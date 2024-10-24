@@ -1,154 +1,46 @@
----
-- name: Run compliance Docker Container using AWX Credentials
-  hosts: localhost
-  become: True
+# Find the JSON file (both for Choice 1 and 2)
+- name: Find the JSON file
+  find:
+    paths: "/runner/project/output/"
+    patterns: "prowler-output-*.json"
+  register: json_file
 
-  vars:
-    services: "elb,s3,ec2"  # Define the services you want to scan, separated by commas
-    region: "us-west-2"  # Specify the region for scans
-    compliance_value: "cis-1.2"  # Example compliance value (adjust as needed)
-    role_session_name: "complianceSession"  # Session name when assuming a role (Choice 2)
-    scan_type: "services"  # Options: 'services' or 'compliance'
-    api_url: "https://dev.concierto.cloud/api/masterService/uploadFileForClient"  # Backend API URL
+# Check if JSON file exists before renaming
+- name: Fail if no JSON file was found
+  fail:
+    msg: "No JSON file found for renaming."
+  when: json_file.matched == 0
 
-  tasks:
-    - name: Debug user choice
-      debug:
-        msg: "User choice is: '{{ choice }}'"
+# Rename the JSON file from prowler-output to healthcheck-output
+- name: Rename JSON file from prowler-output to healthcheck-output
+  command: mv "{{ json_file.files[0].path }}" "{{ json_file.files[0].path | regex_replace('prowler', 'healthcheck') }}"
+  register: renamed_file
+  when: json_file.matched > 0
 
-    - name: Validate user choice
-      fail:
-        msg: "Invalid choice. Please select '1' to run with AWS credentials or '2' to assume role using ARN."
-      when: choice not in [1, 2]
+# Use the new path for the renamed file
+- name: Set fact for renamed file path
+  set_fact:
+    renamed_file_path: "{{ json_file.files[0].path | regex_replace('prowler', 'healthcheck') }}"
+  when: json_file.matched > 0
 
-    - name: Debug scan type
-      debug:
-        msg: "Scan type is: '{{ scan_type }}'"
+# Read the renamed JSON file before upload
+- name: Read the renamed JSON file
+  command: cat "{{ renamed_file_path }}"
+  register: json_output
+  when: json_file.matched > 0
 
-    # Choice 1: Use AWS credentials from environment variables
-    - name: Display message for AWS credentials (Choice 1)
-      debug:
-        msg: "Proceeding with AWS Access Key: {{ lookup('env', 'AWS_ACCESS_KEY_ID') }} and Secret Key for authentication."
-      when: choice == 1
-
-    # Choice 1: Health check
-    - name: Execute Health check using AWS credentials (Choice 1 - Compliance)
-      shell: |
-        AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
-        AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
-        prowler aws --region {{ region }} -c {{ compliance_value }}
-      register: Healthcheck_output
-      when: choice == 1 and scan_type == "compliance"
-      ignore_errors: yes
-      no_log: true
-
-    # Choice 1: Service-specific check
-    - name: Execute Health check using AWS credentials (Choice 1 - Services)
-      shell: |
-        AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
-        AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
-        prowler aws --region {{ region }} --services {{ services }} 
-      register: Healthcheck_output
-      when: choice == 1 and scan_type == "services"
-      ignore_errors: yes
-      no_log: true
-
-    # Choice 2: Assume an AWS role using ARN
-    - name: Display message for ARN-based authentication (Choice 2)
-      debug:
-        msg: "Proceeding with role assumption using ARN: {{ role_arn }} and session name: {{ role_session_name }}."
-      when: choice == 2
-
-    - name: Assume the AWS Role (Choice 2)
-      shell: |
-        aws sts assume-role --role-arn {{ role_arn }} --role-session-name {{ role_session_name }} --output json
-      register: assume_role_output
-      when: choice == 2
-
-    - name: Parse and extract AWS credentials from assumed role (Choice 2)
-      set_fact:
-        aws_access_key_id: "{{ assume_role_output.stdout | from_json | json_query('Credentials.AccessKeyId') }}"
-        aws_secret_access_key: "{{ assume_role_output.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
-        aws_session_token: "{{ assume_role_output.stdout | from_json | json_query('Credentials.SessionToken') }}"
-      when: choice == 2
-
-    # Choice 2: Compliance check
-    - name: Execute compliance check with assumed role credentials (Choice 2 - Compliance)
-      shell: |
-        AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
-        AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
-        AWS_SESSION_TOKEN={{ aws_session_token }} \
-        prowler aws --region {{ region }} -c {{ compliance_value }}
-      register: Healthcheck_output
-      when: choice == 2 and scan_type == "compliance"
-      ignore_errors: yes
-      no_log: true
-
-    # Choice 2: Service-specific check
-    - name: Execute Health check with assumed role credentials (Choice 2 - Services)
-      shell: |
-        AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
-        AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
-        AWS_SESSION_TOKEN={{ aws_session_token }} \
-        prowler aws --region {{ region }} --services {{ services }}
-      register: Healthcheck_output
-      when: choice == 2 and scan_type == "services"
-      ignore_errors: yes
-      no_log: true
-
-    # Replace "Prowler" with "compliance scan" in the logs dynamically
-    - name: Replace 'Prowler' with 'Healthcheck scan' in the logs dynamically
-      set_fact:
-        prowler_output_modified: "{{ Healthcheck_output.stdout | regex_replace('Prowler', 'Healthcheck scan') }}"
-      when: Healthcheck_output is defined and Healthcheck_output.stdout is defined
-
-    # Display the modified output logs
-    - name: Display Healthcheck scan results
-      debug:
-        var: prowler_output_modified
-      when: Healthcheck_output is defined and Healthcheck_output.stdout is defined
-
-    # Find the JSON file (both for Choice 1 and 2)
-    - name: Find the JSON file
-      find:
-        paths: "/runner/project/output/"
-        patterns: "prowler-output-*.json"
-      register: json_file
-
-    # Check if JSON file exists before uploading
-    - name: Fail if no JSON file was found
-      fail:
-        msg: "No JSON file found for upload."
-      when: json_file.matched == 0
-
-    
-    - name: JSON file verifying
-      command: mv "{{ json_file.files[0].path }}" "{{ json_file.files[0].path | regex_replace('prowler', 'healthcheck') }}"
-      register: renamed_file
-      when: json_file.matched > 0
-
-    # Read the JSON file before upload
-    - name: Read the  JSON file
-      command: cat "{{ renamed_file.stdout }}"
-      register: json_output
-      when: json_file.matched > 0
-
-    # Upload the JSON file to Backend API
-    - name: Upload JSON to Backend API
-      uri:
-        url: "{{ api_url }}"
-        method: POST
-        headers:
-          apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
-          Content-Type: "multipart/form-data"
-        body_format: form-multipart
-        body:
-          file: 
-            content: "{{ lookup('file', renamed_file.stdout) }}"  # Reading the JSON file content
-            filename: "{{ renamed_file.stdout | basename }}"
-      register: upload_response
-      when: json_file.matched > 0
-
-    - name: Debug API response
-      debug:
-        var: upload_response
+# Upload the renamed JSON file to Backend API
+- name: Upload JSON to Backend API
+  uri:
+    url: "{{ api_url }}"
+    method: POST
+    headers:
+      apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
+      Content-Type: "multipart/form-data"
+    body_format: form-multipart
+    body:
+      file: 
+        content: "{{ lookup('file', renamed_file_path) }}"  # Reading the renamed JSON file content
+        filename: "{{ renamed_file_path | basename }}"
+  register: upload_response
+  when: json_file.matched > 0
