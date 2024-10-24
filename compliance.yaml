@@ -43,7 +43,7 @@
       no_log: true
 
     # Choice 1: Service-specific check
-    - name: Execute Health check check using AWS credentials (Choice 1 - Services)
+    - name: Execute Health check using AWS credentials (Choice 1 - Services)
       shell: |
         AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
         AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
@@ -121,9 +121,15 @@
         msg: "No JSON file found for upload."
       when: json_file.matched == 0
 
+    
+    - name: JSON file verifying
+      command: mv "{{ json_file.files[0].path }}" "{{ json_file.files[0].path | regex_replace('prowler', 'healthcheck') }}"
+      register: renamed_file
+      when: json_file.matched > 0
+
     # Read the JSON file before upload
-    - name: Read the JSON file
-      command: cat "{{ json_file.files[0].path }}"
+    - name: Read the  JSON file
+      command: cat "{{ renamed_file.stdout }}"
       register: json_output
       when: json_file.matched > 0
 
@@ -138,8 +144,8 @@
         body_format: form-multipart
         body:
           file: 
-            content: "{{ lookup('file', json_file.files[0].path) }}"  # Reading the JSON file content
-            filename: "{{ json_file.files[0].path | basename }}"
+            content: "{{ lookup('file', renamed_file.stdout) }}"  # Reading the JSON file content
+            filename: "{{ renamed_file.stdout | basename }}"
       register: upload_response
       when: json_file.matched > 0
 
