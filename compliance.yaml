@@ -1,7 +1,7 @@
 ---
 - name: Run compliance Docker Container using AWX Credentials
   hosts: localhost
-  become: True
+  become: true
 
   vars:
     services: "elb,s3,ec2"  # Define the services you want to scan, separated by commas
@@ -100,7 +100,7 @@
       no_log: true
 
     # Modify logs for Healthcheck scan
-    - name: finding the logs with 'Healthcheck scan' in the logs dynamically
+    - name: Find and replace 'Prowler' with 'Healthcheck scan' in the logs dynamically
       set_fact:
         prowler_output_modified: "{{ Healthcheck_output.stdout | regex_replace('Prowler', 'Healthcheck scan') }}"
       when: Healthcheck_output is defined and Healthcheck_output.stdout is defined
@@ -130,15 +130,14 @@
       command: mv "{{ json_file.files[0].path }}" "{{ json_file.files[0].path | regex_replace('prowler', 'healthcheck') }}"
       register: renamed_file
       when: json_file.matched > 0
-      #no_log: true
 
     # Set fact with renamed file path
     - name: Set renamed file path
       set_fact:
         renamed_file_path: "{{ json_file.files[0].path | regex_replace('prowler', 'healthcheck') }}"
       when: json_file.matched > 0
-      #no_log: true
-      
+
+    # Check if renamed JSON file exists
     - name: Check if renamed JSON file exists
       stat:
         path: "{{ renamed_file_path }}"
@@ -148,17 +147,26 @@
       fail:
         msg: "Renamed JSON file does not exist at path: {{ renamed_file_path }}"
       when: not json_file_stat.stat.exists
-	- name: Print the value of renamed_file_path
-	  debug:
+
+    # Debug the value of renamed_file_path
+    - name: Print the value of renamed_file_path
+      debug:
         msg: "The renamed file path is: {{ renamed_file_path }}"
-	- name: Display files in the output directory
-	  debug:
-      var: output_dir_files.stdout
-	
+
+    # List files in the output directory
     - name: List files in /runner/project/output/ directory
-	  command: ls -l /runner/project/output/
+      command: ls -l /runner/project/output/
       register: output_dir_files
 
+    # Display files in the output directory
+    - name: Display files in the output directory
+      debug:
+        var: output_dir_files.stdout
+
+    # Pause for 2 minutes before uploading the JSON file
+    - name: Wait for 2 minutes before uploading the JSON file
+      pause:
+        seconds: 120
 
     # Upload the renamed JSON file to Backend API
     - name: Upload JSON file to Backend API
@@ -177,11 +185,6 @@
       register: upload_response
       when: json_file.matched > 0
       ignore_errors: yes
-      
-    # Pause for 2 minutes before uploading the file
-    - name: Wait for 2 minutes before uploading the JSON file
-      pause:
-        seconds: 1200 
 
     # Debug API response
     - name: Debug API response
