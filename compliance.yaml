@@ -25,6 +25,13 @@
       debug:
         msg: "Scan type is: '{{ scan_type }}'"
 
+    # Create the /runner/project/files directory with 777 permissions
+    - name: Create /runner/project/files directory
+      file:
+        path: /runner/project/files
+        state: directory
+        mode: '0777'
+
     # Choice 1: Use AWS credentials from environment variables
     - name: Display message for AWS credentials (Choice 1)
       debug:
