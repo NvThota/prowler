@@ -12,12 +12,6 @@
     api_url: "https://dev.concierto.cloud/api/masterService/uploadFileForClient"  # Backend API URL
 
   tasks:
-    - name: Set permissions for output folder
-      file:
-        path: "/runner/project/output/"
-        mode: '0777'
-        state: directory
-
     - name: Debug user choice
       debug:
         msg: "User choice is: '{{ choice }}'"
@@ -125,27 +119,16 @@
       register: json_file
       no_log: true
 
-    # Debugging: Check if JSON file was found and its location
-    - name: Debug JSON file location
-      debug:
-        msg: >
-          "JSON file found: {{ json_file.files | map(attribute='path') | join(', ') }}"
-      when: json_file.matched > 0
-
-    # Check if JSON file exists before uploading
+    # Check if JSON file exists before renaming
     - name: Fail if no JSON file was found
       fail:
-        msg: "No JSON file found for uploading."
+        msg: "No JSON file found for renaming."
       when: json_file.matched == 0
 
-    # Debugging: Check upload file path
-    - name: Debug file upload path
+    # Debug JSON file location
+    - name: Debug JSON file location
       debug:
-        msg: >
-          "Attempting to upload file from path: {{ json_file.files[0].path }}. Checking the following locations: 
-          /runner/project/output/prowler-output-*.json,
-          /runner/project/files/prowler-output-*.json,
-          /runner/project/prowler-output-*.json"
+        msg: "JSON file found: {{ json_file.files[0].path }}"
 
     # Upload the JSON file to Backend API
     - name: Upload JSON file to Backend API
@@ -160,12 +143,22 @@
           file:
             src: "{{ json_file.files[0].path }}"  # Path to the JSON file
             filename: "{{ json_file.files[0].path | basename }}"
+            remote_src: yes  # Ensure Ansible knows to look for the file on the controller
       register: upload_response
       when: json_file.matched > 0
       ignore_errors: yes
 
-    # Debugging: Check API upload response
-    - name: Debug API upload response
+    # Debug API response
+    - name: Debug API response
       debug:
-        msg: >
-          "API Response: {{ upload_response }}. Looking for JSON file in: /runner/project/output/ with patterns: prowler-output-*.json"
+        var: upload_response
+
+    # Debug output directory search
+    - name: List files in /runner/project/output/ directory
+      command: ls -l /runner/project/output/
+      register: output_dir_files
+
+    # Display files in the output directory
+    - name: Display files in the output directory
+      debug:
+        var: output_dir_files.stdout
