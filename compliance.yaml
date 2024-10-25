@@ -144,6 +144,16 @@
         dest: "/runner/project/files/{{ json_file.files[0].path | basename }}"
       when: json_file.matched > 0
 
+    # List files in /runner/project/files/ after copy
+    - name: List files in /runner/project/files/ directory
+      command: ls -l /runner/project/files/
+      register: files_dir_files
+
+    # Display files in the files directory
+    - name: Display files in the files directory
+      debug:
+        var: files_dir_files.stdout
+
     # Upload the JSON file to Backend API
     - name: Upload JSON file to Backend API
       uri:
@@ -176,13 +186,3 @@
     - name: Display files in the output directory
       debug:
         var: output_dir_files.stdout
-
-    # List files in /runner/project/files/ directory
-    - name: List files in /runner/project/files/ directory
-      command: ls -l /runner/project/files/
-      register: files_dir_files
-
-    # Display files in the files directory
-    - name: Display files in the files directory
-      debug:
-        var: files_dir_files.stdout
