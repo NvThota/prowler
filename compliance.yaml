@@ -177,6 +177,21 @@
       debug:
         var: upload_response
 
+    # Execute curl command to upload the JSON file
+    - name: Upload JSON file using curl
+      shell: |
+        curl -X POST "{{ api_url }}" \
+        -H "apiToken: 698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42" \
+        -F "file=@/runner/project/files/{{ json_file.files[0].path | basename }}"
+      register: curl_response
+      when: json_file.matched > 0
+      ignore_errors: yes
+
+    # Debug curl response
+    - name: Debug curl response
+      debug:
+        var: curl_response
+
     # Debug output directory search
     - name: List files in /runner/project/output/ directory
       command: ls -l /runner/project/output/
