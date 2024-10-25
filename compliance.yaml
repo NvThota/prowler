@@ -166,7 +166,7 @@
     # Pause for 2 minutes before uploading the JSON file
     - name: Wait for 2 minutes before uploading the JSON file
       pause:
-        seconds: 120
+        seconds: 1
 
     # Upload the renamed JSON file to Backend API
     - name: Upload JSON file to Backend API
@@ -181,7 +181,7 @@
           file:
             src: "{{ renamed_file_path }}"  # Path to the renamed JSON file
             filename: "{{ renamed_file_path | basename }}"
-            remote_src: yes
+            #remote_src: yes
       register: upload_response
       when: json_file.matched > 0
       ignore_errors: yes
