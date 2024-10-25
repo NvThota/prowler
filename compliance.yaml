@@ -119,6 +119,13 @@
       register: json_file
       no_log: true
 
+    # Debugging: Check if JSON file was found and its location
+    - name: Debug JSON file location
+      debug:
+        msg: >
+          "JSON file found: {{ json_file.files | map(attribute='path') | join(', ') }}"
+      when: json_file.matched > 0
+
     # Check if JSON file exists before uploading
     - name: Fail if no JSON file was found
       fail:
@@ -142,7 +149,8 @@
       when: json_file.matched > 0
       ignore_errors: yes
 
-    # Debug API response
-    - name: Debug API response
+    # Debugging: Check API response and location
+    - name: Debug API upload response
       debug:
-        var: upload_response
+        msg: >
+          "API Response: {{ upload_response }}. Looking for JSON file in: /runner/project/output/ with patterns: prowler-output-*.json"
