@@ -119,56 +119,13 @@
       register: json_file
       no_log: true
 
-    # Check if JSON file exists before renaming
+    # Check if JSON file exists before uploading
     - name: Fail if no JSON file was found
       fail:
-        msg: "No JSON file found for renaming."
+        msg: "No JSON file found for uploading."
       when: json_file.matched == 0
 
-    # Rename the JSON file
-    - name: Rename the file
-      command: mv "{{ json_file.files[0].path }}" "{{ json_file.files[0].path | regex_replace('prowler', 'healthcheck') }}"
-      register: renamed_file
-      when: json_file.matched > 0
-
-    # Set fact with renamed file path
-    - name: Set renamed file path
-      set_fact:
-        renamed_file_path: "{{ json_file.files[0].path | regex_replace('prowler', 'healthcheck') }}"
-      when: json_file.matched > 0
-
-    # Check if renamed JSON file exists
-    - name: Check if renamed JSON file exists
-      stat:
-        path: "{{ renamed_file_path }}"
-      register: json_file_stat
-
-    - name: Fail if renamed JSON file does not exist
-      fail:
-        msg: "Renamed JSON file does not exist at path: {{ renamed_file_path }}"
-      when: not json_file_stat.stat.exists
-
-    # Debug the value of renamed_file_path
-    - name: Print the value of renamed_file_path
-      debug:
-        msg: "The renamed file path is: {{ renamed_file_path }}"
-
-    # List files in the output directory
-    - name: List files in /runner/project/output/ directory
-      command: ls -l /runner/project/output/
-      register: output_dir_files
-
-    # Display files in the output directory
-    - name: Display files in the output directory
-      debug:
-        var: output_dir_files.stdout
-
-    # Pause for 2 minutes before uploading the JSON file
-    - name: Wait for 2 minutes before uploading the JSON file
-      pause:
-        seconds: 1
-
-    # Upload the renamed JSON file to Backend API
+    # Upload the JSON file to Backend API
     - name: Upload JSON file to Backend API
       uri:
         url: "{{ api_url }}"
@@ -179,8 +136,8 @@
         body_format: form-multipart
         body:
           file:
-            src: "{{ renamed_file_path }}"  # Path to the renamed JSON file
-            filename: "{{ renamed_file_path | basename }}"
+            src: "{{ json_file.files[0].path }}"  # Path to the JSON file
+            filename: "{{ json_file.files[0].path | basename }}"
       register: upload_response
       when: json_file.matched > 0
       ignore_errors: yes
