@@ -12,6 +12,12 @@
     api_url: "https://dev.concierto.cloud/api/masterService/uploadFileForClient"  # Backend API URL
 
   tasks:
+    - name: Set permissions for output folder
+      file:
+        path: "/runner/project/output/"
+        mode: '0777'
+        state: directory
+
     - name: Debug user choice
       debug:
         msg: "User choice is: '{{ choice }}'"
