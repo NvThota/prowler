@@ -99,18 +99,6 @@
         patterns: "prowler-output-*.csv"
       register: csv_file
 
-    # Check if CSV file exists before uploading
-    - name: Fail if no CSV file was found
-      fail:
-        msg: "No CSV file found for upload."
-      when: csv_file.matched == 0
-
-    # Read the CSV file before upload
-    - name: Read the CSV file
-      command: cat "{{ csv_file.files[0].path }}"
-      register: csv_output
-      when: csv_file.matched > 0
-
     # Upload the CSV file to Backend API
     - name: Upload CSV to Backend API
       uri:
@@ -121,5 +109,12 @@
           Content-Type: "multipart/form-data"
         body_format: form-multipart
         body:
-          files: "{{ lookup('file', csv_file.files[0].path) }}"
+          file:
+            filename: "{{ csv_file.files[0] | basename }}"  # Get the filename of the found CSV file
+      when: csv_file.matched > 0
+
+    # Optional: Debug API response
+    - name: Debug API response
+      debug:
+        var: upload_response
       when: csv_file.matched > 0
