@@ -110,6 +110,7 @@
         body_format: form-multipart
         body:
           file:
+            content: "{{ lookup('file', csv_file.files[0]) }}"  # Read the content of the found CSV file
             filename: "{{ csv_file.files[0] | basename }}"  # Get the filename of the found CSV file
       when: csv_file.matched > 0
 
