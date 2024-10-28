@@ -36,7 +36,7 @@
       shell: |
         AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
         AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
-        prowler aws --region {{ region }} -c {{ compliance_value }} -M csv
+        prowler aws --region {{ region }} -c {{ compliance_value }}
       register: prowler_output
       when: choice == 1 and scan_type == "compliance"
       ignore_errors: yes
@@ -46,7 +46,7 @@
       shell: |
         AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
         AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
-        prowler aws --region {{ region }} --services {{ services }} -M csv
+        prowler aws --region {{ region }} --services {{ services }} 
       register: prowler_output
       when: choice == 1 and scan_type == "services"
       ignore_errors: yes
@@ -76,7 +76,7 @@
         AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
         AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
         AWS_SESSION_TOKEN={{ aws_session_token }} \
-        prowler aws --region {{ region }} -c {{ compliance_value }} -M csv
+        prowler aws --region {{ region }} -c {{ compliance_value }}
       register: prowler_output
       when: choice == 2 and scan_type == "compliance"
       ignore_errors: yes
@@ -87,17 +87,22 @@
         AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
         AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
         AWS_SESSION_TOKEN={{ aws_session_token }} \
-        prowler aws --region {{ region }} --services {{ services }} -M csv
+        prowler aws --region {{ region }} --services {{ services }}
       register: prowler_output
       when: choice == 2 and scan_type == "services"
       ignore_errors: yes
 
-    # Find the CSV file (both for Choice 1 and 2)
+    # Find the CSV file
     - name: Find the CSV file
       find:
         paths: "/runner/project/output/"
         patterns: "prowler-output-*.csv"
       register: csv_file
+
+    # Debugging output to verify found files
+    - name: Debug found CSV files
+      debug:
+        var: csv_file
 
     # Check if CSV file exists before uploading
     - name: Fail if no CSV file was found
@@ -105,8 +110,8 @@
         msg: "No CSV file found for upload."
       when: csv_file.matched == 0
 
-    # Upload the complete CSV file to Backend API
-    - name: Upload CSV file to Backend API
+    # Upload the CSV file to Backend API
+    - name: Upload CSV to Backend API
       uri:
         url: "{{ api_url }}"
         method: POST
@@ -116,9 +121,9 @@
         body_format: form-multipart
         body:
           file:
-            #content: "{{ lookup('file', csv_file.files[0].path) }}"
-            filename: "{{ csv_file.files[0].path | basename }}"
+            src: "/runner/project/output/{{ csv_file.files[0].path | basename }}"
       register: upload_response
+      when: csv_file.matched > 0
 
     # Debug API response
     - name: Debug API response
