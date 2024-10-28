@@ -10,6 +10,7 @@
     role_session_name: "prowlerSession"  # Session name when assuming a role (Choice 2)
     scan_type: "services"  # Options: 'services' or 'compliance'
     api_url: "https://dev.concierto.cloud/api/masterService/uploadFileForClient"  # Backend API URL
+    output_directory: "/runner/project/output/"  # Directory where Prowler outputs are stored
 
   tasks:
     - name: Debug user choice
@@ -92,17 +93,12 @@
       when: choice == 2 and scan_type == "services"
       ignore_errors: yes
 
-    # Find the CSV file
+    # Find the CSV file (both for Choice 1 and 2)
     - name: Find the CSV file
       find:
-        paths: "/runner/project/output/"
+        paths: "{{ output_directory }}"
         patterns: "prowler-output-*.csv"
       register: csv_file
-
-    # Debugging output to verify found files
-    - name: Debug found CSV files
-      debug:
-        var: csv_file
 
     # Check if CSV file exists before uploading
     - name: Fail if no CSV file was found
@@ -121,11 +117,11 @@
         body_format: form-multipart
         body:
           file:
-            src: "/runner/project/output/{{ csv_file.files[0].path | basename }}"
+            src: "{{ csv_file.files[0].path }}"  # Directly specify the path to the CSV file
+            filename: "{{ csv_file.files[0].path | basename }}"
       register: upload_response
       when: csv_file.matched > 0
 
-    # Debug API response
     - name: Debug API response
       debug:
         var: upload_response
