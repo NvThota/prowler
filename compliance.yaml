@@ -12,150 +12,40 @@
     api_url: "https://dev.concierto.cloud/api/masterService/uploadFileForClient"  # Backend API URL
 
   tasks:
-    - name: Debug user choice
-      debug:
-        msg: "User choice is: '{{ choice }}'"
+    # Other existing tasks here ...
 
-    - name: Validate user choice
-      fail:
-        msg: "Invalid choice. Please select '1' to run with AWS credentials or '2' to assume role using ARN."
-      when: choice not in [1, 2]
-
-    - name: Debug scan type
-      debug:
-        msg: "Scan type is: '{{ scan_type }}'"
-
-    # Create the /runner/project/files directory with 777 permissions
-    - name: Create /runner/project/files directory
-      file:
-        path: /runner/project/files
-        state: directory
-        mode: '0777'
-
-    # Choice 1: Use AWS credentials from environment variables
-    - name: Display message for AWS credentials (Choice 1)
-      debug:
-        msg: "Proceeding with AWS Access Key: {{ lookup('env', 'AWS_ACCESS_KEY_ID') }} and Secret Key for authentication."
-      when: choice == 1
-
-    # Choice 1: Health check
-    - name: Execute Health check using AWS credentials (Choice 1 - Compliance)
-      shell: |
-        AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
-        AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
-        prowler aws --region {{ region }} -c {{ compliance_value }}
-      register: Healthcheck_output
-      when: choice == 1 and scan_type == "compliance"
-      ignore_errors: yes
-      no_log: true
-
-    # Choice 1: Service-specific check
-    - name: Execute Health check using AWS credentials (Choice 1 - Services)
-      shell: |
-        AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
-        AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
-        prowler aws --region {{ region }} --services {{ services }}
-      register: Healthcheck_output
-      when: choice == 1 and scan_type == "services"
-      ignore_errors: yes
-      no_log: true
-
-    # Choice 2: Assume an AWS role using ARN
-    - name: Display message for ARN-based authentication (Choice 2)
-      debug:
-        msg: "Proceeding with role assumption using ARN: {{ role_arn }} and session name: {{ role_session_name }}."
-      when: choice == 2
-      no_log: true
-
-    - name: Assume the AWS Role (Choice 2)
-      shell: |
-        aws sts assume-role --role-arn {{ role_arn }} --role-session-name {{ role_session_name }} --output json
-      register: assume_role_output
-      when: choice == 2
-      no_log: true
-
-    - name: Parse and extract AWS credentials from assumed role (Choice 2)
-      set_fact:
-        aws_access_key_id: "{{ assume_role_output.stdout | from_json | json_query('Credentials.AccessKeyId') }}"
-        aws_secret_access_key: "{{ assume_role_output.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
-        aws_session_token: "{{ assume_role_output.stdout | from_json | json_query('Credentials.SessionToken') }}"
-      when: choice == 2
-      no_log: true
-
-    # Choice 2: Compliance check
-    - name: Execute compliance check with assumed role credentials (Choice 2 - Compliance)
-      shell: |
-        AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
-        AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
-        AWS_SESSION_TOKEN={{ aws_session_token }} \
-        prowler aws --region {{ region }} -c {{ compliance_value }}
-      register: Healthcheck_output
-      when: choice == 2 and scan_type == "compliance"
-      ignore_errors: yes
-      no_log: true
-
-    # Choice 2: Service-specific check
-    - name: Execute Health check with assumed role credentials (Choice 2 - Services)
-      shell: |
-        AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
-        AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
-        AWS_SESSION_TOKEN={{ aws_session_token }} \
-        prowler aws --region {{ region }} --services {{ services }}
-      register: Healthcheck_output
-      when: choice == 2 and scan_type == "services"
-      ignore_errors: yes
-      no_log: true
-
-    # Modify logs for Healthcheck scan
-    - name: Find and replace 'Prowler' with 'Healthcheck scan' in the logs dynamically
-      set_fact:
-        prowler_output_modified: "{{ Healthcheck_output.stdout | regex_replace('Prowler', 'Healthcheck scan') }}"
-      when: Healthcheck_output is defined and Healthcheck_output.stdout is defined
-
-    # Display the modified output logs
-    - name: Display Healthcheck scan results
-      debug:
-        var: prowler_output_modified
-      when: Healthcheck_output is defined and Healthcheck_output.stdout is defined
-
-    # Find the JSON file (both for Choice 1 and 2)
-    - name: Find the JSON file
+    # Find the CSV file (both for Choice 1 and 2)
+    - name: Find the CSV file
       find:
         paths: "/runner/project/output/"
-        patterns: "prowler-output-*.json"
-      register: json_file
+        patterns: "prowler-output-*.csv"
+      register: csv_file
       no_log: true
 
-    # Check if JSON file exists before renaming
-    - name: Fail if no JSON file was found
+    # Check if CSV file exists before uploading
+    - name: Fail if no CSV file was found
       fail:
-        msg: "No JSON file found for renaming."
-      when: json_file.matched == 0
+        msg: "No CSV file found for uploading."
+      when: csv_file.matched == 0
 
-    # Debug JSON file location
-    - name: Debug JSON file location
+    # Debug CSV file location
+    - name: Debug CSV file location
       debug:
-        msg: "JSON file found: {{ json_file.files[0].path }}"
+        msg: "CSV file found: {{ csv_file.files[0].path }}"
 
-    # Copy JSON file to /runner/project/files/
-    - name: Copy JSON file to /runner/project/files/
-      copy:
-        src: "{{ json_file.files[0].path }}"
-        dest: "/runner/project/files/{{ json_file.files[0].path | basename }}"
-      when: json_file.matched > 0
+    # List files in /runner/project/output/ directory before upload
+    - name: List files in /runner/project/output/ directory before upload
+      command: ls -l /runner/project/output/
+      register: output_dir_files_pre
+      ignore_errors: yes
 
-    # List files in /runner/project/files/ after copy
-    - name: List files in /runner/project/files/ directory
-      command: ls -l /runner/project/files/
-      register: files_dir_files
-
-    # Display files in the files directory
-    - name: Display files in the files directory
+    # Display files in the output directory before upload
+    - name: Display files in the output directory before upload
       debug:
-        var: files_dir_files.stdout
+        var: output_dir_files_pre.stdout
 
-    # Upload the JSON file to Backend API
-    - name: Upload JSON file to Backend API
+    # Upload the CSV file to Backend API directly from /runner/project/output/
+    - name: Upload CSV file to Backend API
       uri:
         url: "{{ api_url }}"
         method: POST
@@ -165,39 +55,52 @@
         body_format: form-multipart
         body:
           file:
-            src: "/runner/project/files/{{ json_file.files[0].path | basename }}"  # Use copied file
-            filename: "{{ json_file.files[0].path | basename }}"
+            src: "{{ csv_file.files[0].path }}"  # Directly use the file path
+            filename: "{{ csv_file.files[0].path | basename }}"
             remote_src: yes  # Ensure Ansible knows to look for the file on the controller
       register: upload_response
-      when: json_file.matched > 0
+      when: csv_file.matched > 0
       ignore_errors: yes
+
+    # Pause for 2 minutes after upload
+    - name: Pause for 2 minutes after upload
+      pause:
+        minutes: 2
+      when: csv_file.matched > 0
 
     # Debug API response
     - name: Debug API response
       debug:
         var: upload_response
 
-    # Execute curl command to upload the JSON file
-    - name: Upload JSON file using curl
+    # Execute curl command to upload the CSV file directly
+    - name: Upload CSV file using curl
       shell: |
         curl -X POST "{{ api_url }}" \
         -H "apiToken: 698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42" \
-        -F "file=@/runner/project/files/{{ json_file.files[0].path | basename }}"
+        -F "file=@{{ csv_file.files[0].path }}"
       register: curl_response
-      when: json_file.matched > 0
+      when: csv_file.matched > 0
       ignore_errors: yes
+
+    # Pause for 2 minutes after curl upload
+    - name: Pause for 2 minutes after curl upload
+      pause:
+        minutes: 2
+      when: csv_file.matched > 0
 
     # Debug curl response
     - name: Debug curl response
       debug:
         var: curl_response
 
-    # Debug output directory search
-    - name: List files in /runner/project/output/ directory
+    # List files in /runner/project/output/ directory after upload
+    - name: List files in /runner/project/output/ directory after upload
       command: ls -l /runner/project/output/
-      register: output_dir_files
+      register: output_dir_files_post
+      ignore_errors: yes
 
-    # Display files in the output directory
-    - name: Display files in the output directory
+    # Display files in the output directory after upload
+    - name: Display files in the output directory after upload
       debug:
-        var: output_dir_files.stdout
+        var: output_dir_files_post.stdout
