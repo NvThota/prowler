@@ -120,5 +120,5 @@
           Content-Type: "multipart/form-data"
         body_format: form-multipart
         body:
-          file: "{{ lookup('file', csv_file.files[0].path) }}"
+          files: "{{ lookup('file', csv_file.files[0].path) }}"
       when: csv_file.matched > 0
