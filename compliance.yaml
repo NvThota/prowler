@@ -54,7 +54,7 @@
     # Choice 2: Assume an AWS role using ARN
     - name: Display message for ARN-based authentication (Choice 2)
       debug:
-        msg: "Proceeding with role assumption using ARN: {{ role_arn }} and session name: {{ role_session_name }}."
+        msg: "Proceeding with role assumption using ARN: {{ role_arn }} and session name: '{{ role_session_name }}'."
       when: choice == 2
 
     - name: Assume the AWS Role (Choice 2)
@@ -105,14 +105,8 @@
         msg: "No CSV file found for upload."
       when: csv_file.matched == 0
 
-    # Read the CSV file before upload
-    - name: Read the CSV file
-      command: cat "{{ csv_file.files[0].path }}"
-      register: csv_output
-      when: csv_file.matched > 0
-
-    # Upload the CSV file to Backend API
-    - name: Upload CSV to Backend API
+    # Upload the complete CSV file to Backend API
+    - name: Upload CSV file to Backend API
       uri:
         url: "{{ api_url }}"
         method: POST
@@ -121,9 +115,8 @@
           Content-Type: "multipart/form-data"
         body_format: form-multipart
         body:
-          file: 
-            content: "{{ lookup('file', csv_file.files[0].path) }}"  # Reading the CSV file content
-            filename: "{{ csv_file.files[0].path | basename }}"
+          file:
+            src: "{{ csv_file.files[0].path }}"  # Directly uploading the file
       register: upload_response
       when: csv_file.matched > 0
 
