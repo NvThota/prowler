@@ -116,7 +116,7 @@
         body_format: form-multipart
         body:
           file:
-            content: "{{ lookup('file', csv_file.files[0].path) }}"
+            #content: "{{ lookup('file', csv_file.files[0].path) }}"
             filename: "{{ csv_file.files[0].path | basename }}"
       register: upload_response
 
