@@ -117,6 +117,7 @@
         url: "{{ api_url }}"
         method: POST
         headers:
+          apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
           Content-Type: "multipart/form-data"
         body_format: form-multipart
         body:
