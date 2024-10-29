@@ -119,6 +119,7 @@
           file:
             content: "{{ lookup('file', '/runner/project/output/' + csv_file.files[0].path | basename | regex_replace('\\.csv$', '.zip')) }}"
             filename: "{{ csv_file.files[0].path | basename | regex_replace('\\.csv$', '.zip') }}"
+      register: upload_response  # Register the response from the upload task
       when: csv_file.matched > 0
 
     # Optional: Debug API response
