@@ -9,7 +9,7 @@
     compliance_value: "cis-1.2"  # Example compliance value (adjust as needed)
     role_session_name: "prowlerSession"  # Session name when assuming a role (Choice 2)
     scan_type: "services"  # Options: 'services' or 'compliance'
-    api_url: "https://dev.concierto.cloud/api/masterService/uploadFileForClient"  # Backend API URL
+    api_url: "https://postman-echo.com/post"  # Test API URL for file upload
 
   tasks:
     - name: Debug user choice
@@ -99,11 +99,11 @@
         patterns: "prowler-output-*.csv"
       register: csv_file
 
-    # Compress the CSV file into ZIP format
+    # Compress the CSV file into a ZIP format
     - name: Compress CSV file into ZIP format
       archive:
         path: "{{ csv_file.files[0].path }}"
-        dest: "/runner/project/output/{{ csv_file.files[0].path | basename | regex_replace('\\.csv$', '') }}.zip"
+        dest: "/runner/project/output/{{ csv_file.files[0].path | basename | regex_replace('\\.csv$', '.zip') }}"
         format: zip
       when: csv_file.matched > 0
 
@@ -113,13 +113,12 @@
         url: "{{ api_url }}"
         method: POST
         headers:
-          apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
           Content-Type: "multipart/form-data"
         body_format: form-multipart
         body:
           file:
-            content: "{{ lookup('file', '/runner/project/output/' + csv_file.files[0].path | basename | regex_replace('\\.csv$', '') + '.zip') }}"
-            filename: "{{ csv_file.files[0].path | basename | regex_replace('\\.csv$', '') }}.zip"
+            content: "{{ lookup('file', '/runner/project/output/' + csv_file.files[0].path | basename | regex_replace('\\.csv$', '.zip')) }}"
+            filename: "{{ csv_file.files[0].path | basename | regex_replace('\\.csv$', '.zip') }}"
       when: csv_file.matched > 0
 
     # Optional: Debug API response
