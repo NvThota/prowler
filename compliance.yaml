@@ -99,8 +99,16 @@
         patterns: "prowler-output-*.csv"
       register: csv_file
 
-    # Upload the CSV file to Backend API
-    - name: Upload CSV to Backend API
+    # Compress the CSV file into ZIP format
+    - name: Compress CSV file into ZIP format
+      archive:
+        path: "{{ csv_file.files[0].path }}"
+        dest: "/runner/project/output/{{ csv_file.files[0].path | basename | regex_replace('\\.csv$', '') }}.zip"
+        format: zip
+      when: csv_file.matched > 0
+
+    # Upload the ZIP file to Backend API
+    - name: Upload ZIP to Backend API
       uri:
         url: "{{ api_url }}"
         method: POST
@@ -110,8 +118,8 @@
         body_format: form-multipart
         body:
           file:
-            content: "{{ lookup('file', csv_file.files[0].path) }}"  # Read the content of the found CSV file
-            filename: "{{ csv_file.files[0].path | basename }}"  # Get the filename of the found CSV file
+            content: "{{ lookup('file', '/runner/project/output/' + csv_file.files[0].path | basename | regex_replace('\\.csv$', '') + '.zip') }}"
+            filename: "{{ csv_file.files[0].path | basename | regex_replace('\\.csv$', '') }}.zip"
       when: csv_file.matched > 0
 
     # Optional: Debug API response
