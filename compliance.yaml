@@ -9,7 +9,7 @@
     compliance_value: "cis-1.2"  # Example compliance value (adjust as needed)
     role_session_name: "prowlerSession"  # Session name when assuming a role (Choice 2)
     scan_type: "services"  # Options: 'services' or 'compliance'
-    api_url: "https://dev.concierto.cloud/api/masterService/uploadFileForClient"  # Test API URL for file upload
+    api_url: "https://dev.concierto.cloud/api/masterService/uploadFileForClient"  # API URL for file upload
 
   tasks:
     - name: Debug user choice
@@ -99,18 +99,6 @@
         patterns: "prowler-output-*.csv"
       register: csv_file
 
-    # Open and display the contents of the CSV file in logs
-    - name: Read and display CSV file contents
-      slurp:
-        src: "{{ csv_file.files[0].path }}"
-      register: csv_content
-      when: csv_file.matched > 0
-
-    - name: Display CSV file contents
-      debug:
-        msg: "{{ csv_content.content | b64decode }}"
-      when: csv_file.matched > 0
-
     # Compress the CSV file into ZIP format
     - name: Compress CSV file into ZIP format
       archive:
@@ -122,21 +110,26 @@
     # Wait for 2 minutes before uploading
     - name: Wait for 2 minutes before uploading the file
       pause:
-        minutes: 100
+        minutes: 0
         prompt: "Pausing for 2 minutes before uploading the file..."
 
-    # Upload the ZIP file to Backend API
+    # Upload the ZIP file to Backend API using specified headers and form data
     - name: Upload ZIP to Backend API
       uri:
         url: "{{ api_url }}"
         method: POST
         headers:
-          Content-Type: "multipart/form-data"
+          userId: "UD_5bd9c0cc2c71a000152c2d32"
+          apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
+          clientId: "CD_5b974fbfb2864d162de79b66"
+          realm: "trianz"
         body_format: form-multipart
         body:
-          file:
+          files:
             content: "{{ lookup('file', '/runner/project/output/' + csv_file.files[0].path | basename | regex_replace('\\.csv$', '.zip')) }}"
             filename: "{{ csv_file.files[0].path | basename | regex_replace('\\.csv$', '.zip') }}"
+          userId: "UD_5bd9c0cc2c71a000152c2d32"
+          apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
       register: upload_response  # Register the response from the upload task
       when: csv_file.matched > 0
 
