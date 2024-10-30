@@ -9,7 +9,7 @@
     compliance_value: "cis-1.2"  # Example compliance value (adjust as needed)
     role_session_name: "prowlerSession"  # Session name when assuming a role (Choice 2)
     scan_type: "services"  # Options: 'services' or 'compliance'
-    api_url: "master.concierto.svc.cluster.local"  # Test API URL for file upload
+    api_url: "https://postman-echo.com/post"  # Test API URL for file upload
 
   tasks:
     - name: Debug user choice
