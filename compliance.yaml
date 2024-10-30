@@ -107,10 +107,10 @@
         format: zip
       when: json_file.matched > 0
 
-    # Wait for 2 minutes before uploading
-    - name: Wait for 2 minutes before uploading the file
+    # Wait for  minutes before uploading
+    - name: Wait for 0 minutes before uploading the file
       pause:
-        minutes: 2
+        minutes: 0
         prompt: "Pausing for 2 minutes before uploading the file..."
 
     # Upload the ZIP file to Backend API using specified headers and form data
