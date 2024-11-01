@@ -100,7 +100,7 @@
       register: json_files
 
     # finding the generated files
-    - name: Rename prowler JSON files to healthcheck
+    - name:  finding the generated files
       command: mv "{{ item.path }}" "{{ item.path | regex_replace('prowler', 'healthcheck') }}"
       loop: "{{ json_files.files }}"
       register: renamed_files
