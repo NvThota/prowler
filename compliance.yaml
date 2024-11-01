@@ -114,8 +114,8 @@
       when: json_files.matched > 0
       no_log: true
 
-    # Compress each  JSON file into ZIP format
-    - name: Compress  JSON files into ZIP format
+    # Compress each JSON file into ZIP format
+    - name: Compress JSON files into ZIP format
       archive:
         path: "{{ item.path | regex_replace('prowler', 'healthcheck') }}"
         dest: "/runner/project/output/{{ item.path | basename | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.zip') }}"
@@ -126,7 +126,7 @@
       no_log: true
 
     # Upload each ZIP file to Backend API using specified headers and form data
-    - name: Upload each ZIP file to Backend API
+    - name: Upload json ZIP file to Backend API
       uri:
         url: "{{ api_url }}"
         method: POST
