@@ -9,7 +9,7 @@
     compliance_value: "cis-1.2"  # Example compliance value (adjust as needed)
     role_session_name: "prowlerSession"  # Session name when assuming a role (Choice 2)
     scan_type: "services"  # Options: 'services' or 'compliance'
-    api_url: "https://dev.concierto.cloud/api/masterService/uploadFileForClient"  # Test API URL for file upload
+    api_url: "https://dev.concierto.cloud/api/masterService/uploadFileForClient"  # API URL for file upload
 
   tasks:
     - name: Debug user choice
@@ -31,12 +31,22 @@
         msg: "Proceeding with AWS Access Key: {{ lookup('env', 'AWS_ACCESS_KEY_ID') }} and Secret Key for authentication."
       when: choice == 1
 
+    # Choice 1: Compliance check
+    - name: Execute Prowler compliance check using AWS credentials (Choice 1 - Compliance)
+      shell: |
+        AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
+        AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
+        prowler aws --region {{ region }} -c {{ compliance_value }}
+      register: prowler_output
+      when: choice == 1 and scan_type == "compliance"
+      ignore_errors: yes
+
     # Choice 1: Service-specific check
     - name: Execute Prowler service check using AWS credentials (Choice 1 - Services)
       shell: |
         AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
         AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
-        prowler aws --region {{ region }} --services {{ services }} -M json
+        prowler aws --region {{ region }} --services {{ services }} -M csv
       register: prowler_output
       when: choice == 1 and scan_type == "services"
       ignore_errors: yes
@@ -60,52 +70,50 @@
         aws_session_token: "{{ assume_role_output.stdout | from_json | json_query('Credentials.SessionToken') }}"
       when: choice == 2
 
+    # Choice 2: Compliance check
+    - name: Execute Prowler compliance check with assumed role credentials (Choice 2 - Compliance)
+      shell: |
+        AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
+        AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
+        AWS_SESSION_TOKEN={{ aws_session_token }} \
+        prowler aws --region {{ region }} -c {{ compliance_value }}
+      register: prowler_output
+      when: choice == 2 and scan_type == "compliance"
+      ignore_errors: yes
+
     # Choice 2: Service-specific check
     - name: Execute Prowler service check with assumed role credentials (Choice 2 - Services)
       shell: |
         AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
         AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
         AWS_SESSION_TOKEN={{ aws_session_token }} \
-        prowler aws --region {{ region }} --services {{ services }} -M json
+        prowler aws --region {{ region }} --services {{ services }} -M csv
       register: prowler_output
       when: choice == 2 and scan_type == "services"
       ignore_errors: yes
 
-    # Verify Prowler JSON output
-    - name: Verify files in output directory
-      shell: "ls -l /runner/project/output/"
-      register: output_files
-      ignore_errors: yes
-
-    - name: Debug output files
-      debug:
-        var: output_files.stdout_lines
-
-    # Find the JSON file
-    - name: Find the JSON file
+    # Find the CSV file (both for Choice 1 and 2)
+    - name: Find the CSV file
       find:
         paths: "/runner/project/output/"
-        patterns: "prowler-output-*.json"
-      register: json_file
+        patterns: "prowler-output-*.csv"
+      register: csv_file
 
-    - name: Debug JSON file match count
-      debug:
-        msg: "Matched files: {{ json_file.matched }}"
-
-    # Compress the JSON file into ZIP format (only if a match was found)
-    - name: Compress JSON file into ZIP format
+    # Compress the CSV file into ZIP format
+    - name: Compress CSV file into ZIP format
       archive:
-        path: "{{ json_file.files[0].path }}"
-        dest: "/runner/project/output/{{ json_file.files[0].path | basename | regex_replace('\\.json$', '.zip') }}"
+        path: "{{ csv_file.files[0].path }}"
+        dest: "/runner/project/output/{{ csv_file.files[0].path | basename | regex_replace('\\.csv$', '.zip') }}"
         format: zip
-      when: json_file.matched > 0
+      when: csv_file.matched > 0
 
     # Wait for 2 minutes before uploading
     - name: Wait for 2 minutes before uploading the file
       pause:
-        minutes: 2
+        minutes: 0
+        prompt: "Pausing for 2 minutes before uploading the file..."
 
-    # Upload the ZIP file to Backend API
+    # Upload the ZIP file to Backend API using specified headers and form data
     - name: Upload ZIP to Backend API
       uri:
         url: "{{ api_url }}"
@@ -118,15 +126,15 @@
         body_format: form-multipart
         body:
           files:
-            content: "{{ lookup('file', '/runner/project/output/' + json_file.files[0].path | basename | regex_replace('\\.json$', '.zip')) }}"
-            filename: "{{ json_file.files[0].path | basename | regex_replace('\\.json$', '.zip') }}"
+            content: "{{ lookup('file', '/runner/project/output/' + csv_file.files[0].path | basename | regex_replace('\\.csv$', '.zip')) }}"
+            filename: "{{ csv_file.files[0].path | basename | regex_replace('\\.csv$', '.zip') }}"
           userId: "UD_5bd9c0cc2c71a000152c2d32"
           apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
-      register: upload_response
-      when: json_file.matched > 0
+      register: upload_response  # Register the response from the upload task
+      when: csv_file.matched > 0
 
     # Optional: Debug API response
     - name: Debug API response
       debug:
         var: upload_response
-      when: json_file.matched > 0
+      when: csv_file.matched > 0
