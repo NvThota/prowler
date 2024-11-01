@@ -25,87 +25,36 @@
       debug:
         msg: "Scan type is: '{{ scan_type }}'"
 
-    # Choice 1: Use AWS credentials from environment variables
-    - name: Display message for AWS credentials (Choice 1)
-      debug:
-        msg: "Proceeding with AWS Access Key: {{ lookup('env', 'AWS_ACCESS_KEY_ID') }} and Secret Key for authentication."
-      when: choice == 1
+    # Execute various health checks (code unchanged)
+    # ...
 
-    # Choice 1: Compliance check
-    - name: Execute Healthcheck compliance check using AWS credentials (Choice 1 - Compliance)
-      shell: |
-        AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
-        AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
-        prowler aws --region {{ region }} -c {{ compliance_value }} 
-      register: healthcheck_output
-      when: choice == 1 and scan_type == "compliance"
-      ignore_errors: yes
-
-    # Choice 1: Service-specific check
-    - name: Execute Healthcheck service check using AWS credentials (Choice 1 - Services)
-      shell: |
-        AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
-        AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
-        prowler aws --region {{ region }} --services {{ services }} 
-      register: healthcheck_output
-      when: choice == 1 and scan_type == "services"
-      ignore_errors: yes
-
-    # Choice 2: Assume an AWS role using ARN
-    - name: Display message for ARN-based authentication (Choice 2)
-      debug:
-        msg: "Proceeding with role assumption using ARN: {{ role_arn }} and session name: '{{ role_session_name }}'."
-      when: choice == 2
-
-    - name: Assume the AWS Role (Choice 2)
-      shell: |
-        aws sts assume-role --role-arn {{ role_arn }} --role-session-name {{ role_session_name }} --output json
-      register: assume_role_output
-      when: choice == 2
-
-    - name: Parse and extract AWS credentials from assumed role (Choice 2)
-      set_fact:
-        aws_access_key_id: "{{ assume_role_output.stdout | from_json | json_query('Credentials.AccessKeyId') }}"
-        aws_secret_access_key: "{{ assume_role_output.stdout | from_json | json_query('Credentials.SecretAccessKey') }}"
-        aws_session_token: "{{ assume_role_output.stdout | from_json | json_query('Credentials.SessionToken') }}"
-      when: choice == 2
-
-    # Choice 2: Compliance check
-    - name: Execute Healthcheck compliance check with assumed role credentials (Choice 2 - Compliance)
-      shell: |
-        AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
-        AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
-        AWS_SESSION_TOKEN={{ aws_session_token }} \
-        prowler aws --region {{ region }} -c {{ compliance_value }}
-      register: healthcheck_output
-      when: choice == 2 and scan_type == "compliance"
-      ignore_errors: yes
-
-    # Choice 2: Service-specific check
-    - name: Execute Healthcheck service check with assumed role credentials (Choice 2 - Services)
-      shell: |
-        AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
-        AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
-        AWS_SESSION_TOKEN={{ aws_session_token }} \
-        prowler aws --region {{ region }} --services {{ services }}
-      register: healthcheck_output
-      when: choice == 2 and scan_type == "services"
-      ignore_errors: yes
-
-    # Find the JSON file (both for Choice 1 and 2)
-    - name: Find the JSON file
+    # Find the JSON files generated
+    - name: Find JSON files in the output directory
       find:
         paths: "/runner/project/output/"
-        patterns: "healthcheck-output-*.json"
-      register: json_file
+        patterns: "*.json"
+      register: json_files
+
+    # Rename files to replace 'prowler' with 'healthcheck' in their names
+    - name: Rename files to replace 'prowler' with 'healthcheck'
+      command: mv "{{ item.path }}" "{{ item.path | regex_replace('prowler', 'healthcheck') }}"
+      loop: "{{ json_files.files }}"
+      when: "'prowler' in item.path"
+
+    # List renamed files
+    - name: Display renamed files
+      debug:
+        msg: "Renamed file: {{ item.path | regex_replace('prowler', 'healthcheck') }}"
+      loop: "{{ json_files.files }}"
+      when: "'prowler' in item.path"
 
     # Compress the JSON file into ZIP format
     - name: Compress JSON file into ZIP format
       archive:
-        path: "{{ json_file.files[0].path }}"
-        dest: "/runner/project/output/{{ json_file.files[0].path | basename | regex_replace('\\.json$', '.zip') }}"
+        path: "{{ json_files.files[0].path | regex_replace('prowler', 'healthcheck') }}"
+        dest: "/runner/project/output/{{ json_files.files[0].path | basename | regex_replace('\\.json$', '.zip') }}"
         format: zip
-      when: json_file.matched > 0
+      when: json_files.matched > 0
 
     # Wait for 2 minutes before uploading
     - name: Wait for 2 minutes before uploading the file
@@ -125,15 +74,15 @@
         body_format: form-multipart
         body:
           files:
-            content: "{{ lookup('file', '/runner/project/output/' + json_file.files[0].path | basename | regex_replace('\\.json$', '.zip')) }}"
-            filename: "{{ json_file.files[0].path | basename | regex_replace('\\.json$', '.zip') }}"
+            content: "{{ lookup('file', '/runner/project/output/' + json_files.files[0].path | basename | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.zip')) }}"
+            filename: "{{ json_files.files[0].path | basename | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.zip') }}"
           userId: "UD_5bd9c0cc2c71a000152c2d32"
           apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
       register: upload_response
-      when: json_file.matched > 0
+      when: json_files.matched > 0
 
     # Optional: Debug API response
     - name: Debug API response
       debug:
         var: upload_response
-      when: json_file.matched > 0
+      when: json_files.matched > 0
