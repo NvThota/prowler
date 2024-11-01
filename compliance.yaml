@@ -121,11 +121,6 @@
         format: zip
       loop: "{{ renamed_files.results | map(attribute='item') | list }}"
 
-    # Wait for 2 minutes before uploading
-    - name: Wait for 2 minutes before uploading the file
-      pause:
-        minutes: 2
-
     # Upload each ZIP file to Backend API using specified headers and form data
     - name: Upload each ZIP file to Backend API
       uri:
