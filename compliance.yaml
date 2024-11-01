@@ -108,9 +108,9 @@
 
     - name: Display renamed files
       debug:
-        msg: "{{ item.dest }}"
-      loop: "{{ renamed_files.results }}"
-      when: renamed_files is defined
+        msg: "Renamed file: {{ item.path | regex_replace('prowler', 'healthcheck') }}"
+      loop: "{{ json_files.files }}"
+      when: json_files.matched > 0
 
     # Compress each renamed JSON file into ZIP format
     - name: Compress renamed JSON files into ZIP format
@@ -118,8 +118,9 @@
         path: "{{ item.path | regex_replace('prowler', 'healthcheck') }}"
         dest: "/runner/project/output/{{ item.path | basename | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.zip') }}"
         format: zip
-      loop: "{{ renamed_files.results | map(attribute='item') | list }}"
+      loop: "{{ json_files.files }}"
       register: zipped_files
+      when: json_files.matched > 0
 
     # Upload each ZIP file to Backend API using specified headers and form data
     - name: Upload each ZIP file to Backend API
@@ -134,16 +135,16 @@
         body_format: form-multipart
         body:
           files:
-            content: "{{ lookup('file', item.dest) }}"
-            filename: "{{ item.dest | basename }}"
+            content: "{{ lookup('file', '/runner/project/output/' + item.path | basename | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.zip')) }}"
+            filename: "{{ item.path | basename | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.zip') }}"
           userId: "UD_5bd9c0cc2c71a000152c2d32"
           apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
-      loop: "{{ zipped_files.results }}"
+      loop: "{{ json_files.files }}"
       register: upload_response
-      when: zipped_files is defined
+      when: json_files.matched > 0
 
     # Optional: Debug API response
     - name: Debug API response
       debug:
         var: upload_response
-      when: zipped_files is defined
+      when: json_files.matched > 0
