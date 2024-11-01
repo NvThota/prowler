@@ -36,7 +36,7 @@
       shell: |
         AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
         AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
-        prowler aws --region {{ region }} -c {{ compliance_value }} -M json
+        prowler aws --region {{ region }} -c {{ compliance_value }} 
       register: healthcheck_output
       when: choice == 1 and scan_type == "compliance"
       ignore_errors: yes
@@ -46,7 +46,7 @@
       shell: |
         AWS_ACCESS_KEY_ID={{ lookup('env', 'AWS_ACCESS_KEY_ID') }} \
         AWS_SECRET_ACCESS_KEY={{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }} \
-        prowler aws --region {{ region }} --services {{ services }} -M json
+        prowler aws --region {{ region }} --services {{ services }} 
       register: healthcheck_output
       when: choice == 1 and scan_type == "services"
       ignore_errors: yes
@@ -76,7 +76,7 @@
         AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
         AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
         AWS_SESSION_TOKEN={{ aws_session_token }} \
-        prowler aws --region {{ region }} -c {{ compliance_value }} -M json
+        prowler aws --region {{ region }} -c {{ compliance_value }}
       register: healthcheck_output
       when: choice == 2 and scan_type == "compliance"
       ignore_errors: yes
@@ -87,7 +87,7 @@
         AWS_ACCESS_KEY_ID={{ aws_access_key_id }} \
         AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }} \
         AWS_SESSION_TOKEN={{ aws_session_token }} \
-        prowler aws --region {{ region }} --services {{ services }} -M json
+        prowler aws --region {{ region }} --services {{ services }}
       register: healthcheck_output
       when: choice == 2 and scan_type == "services"
       ignore_errors: yes
