@@ -131,6 +131,7 @@
         mv "{{ item.path }}" "{{ item.path | regex_replace('prowler', 'healthcheck') }}"
         cat "{{ item.path | regex_replace('prowler', 'healthcheck') }}" | jq . > temp.txt && \
         pandoc temp.txt -o "{{ item.path | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.pdf') }}"
+        rm temp.txt
       loop: "{{ json_files.files }}"
       register: processed_files
       when: json_files.matched > 0
@@ -149,8 +150,8 @@
         body_format: form-multipart
         body:
           files:
-            content: "{{ lookup('file', '/runner/project/output/' + item.path | basename | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.pdf')) }}"
-            filename: "{{ item.path | basename | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.pdf') }}"
+            content: "{{ lookup('file', '/runner/project/output/' + item.path | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.pdf')) }}"
+            filename: "{{ item.path | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.pdf') }}"
       loop: "{{ json_files.files }}"
       register: upload_response
       when: json_files.matched > 0
