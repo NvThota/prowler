@@ -1,13 +1,13 @@
 ---
 - name: Run Healthcheck Docker Container using AWX Credentials
   hosts: localhost
-  become: True
+  become: true
 
   vars:
-    services: "elb,s3,ec2"  # Define the services you want to scan, separated by commas
-    region: "us-west-2"  # Specify the region for scans
-    compliance_value: "cis-1.2"  # Example compliance value (adjust as needed)
-    role_session_name: "HealthcheckSession"  # Session name when assuming a role (Choice 2)
+    services: "elb,s3,ec2"  # Define the services to scan, separated by commas
+    region: "us-west-2"  # Region for scans
+    compliance_value: "cis-1.2"  # Compliance value (adjust as needed)
+    role_session_name: "HealthcheckSession"  # Session name when assuming a role
     scan_type: "services"  # Options: 'services' or 'compliance'
     api_url: "https://dev.concierto.cloud/api/masterService/uploadFileForClient"  # API URL for file upload
 
@@ -28,7 +28,7 @@
     # Choice 1: Use AWS credentials from environment variables
     - name: Display message for AWS credentials (Choice 1)
       debug:
-        msg: "Proceeding with AWS Access Key: {{ lookup('env', 'AWS_ACCESS_KEY_ID') }} and Secret Key for authentication."
+        msg: "Using AWS Access Key: {{ lookup('env', 'AWS_ACCESS_KEY_ID') }} and Secret Key for authentication."
       when: choice == 1
 
     # Choice 1: Compliance check
@@ -96,59 +96,4 @@
     - name: Find all JSON files in /runner/project/output/
       find:
         paths: "/runner/project/output/"
-        patterns: "prowler-output-*.json"
-      register: json_files
-
-    # Rename the generated files
-    - name: Rename generated files
-      command: mv "{{ item.path }}" "{{ item.path | regex_replace('prowler', 'healthcheck') }}"
-      loop: "{{ json_files.files }}"
-      register: renamed_files
-      when: json_files.matched > 0
-      no_log: true
-
-    - name: Display renamed files
-      debug:
-        msg: "Renamed file: {{ item.path | regex_replace('prowler', 'healthcheck') }}"
-      loop: "{{ json_files.files }}"
-      when: json_files.matched > 0
-      no_log: true
-
-    # Compress each JSON file into ZIP format
-    - name: Compress JSON files into ZIP format
-      archive:
-        path: "{{ item.path | regex_replace('prowler', 'healthcheck') }}"
-        dest: "/runner/project/output/{{ item.path | basename | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.zip') }}"
-        format: zip
-      loop: "{{ json_files.files }}"
-      register: zipped_files
-      when: json_files.matched > 0
-      no_log: true
-
-    # Upload each ZIP file to Backend API using specified headers and form data
-    - name: Upload ZIP file to Backend API
-      uri:
-        url: "{{ api_url }}"
-        method: POST
-        headers:
-          userId: "UD_5bd9c0cc2c71a000152c2d32"
-          apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
-          clientId: "CD_5b974fbfb2864d162de79b66"
-          realm: "trianz"
-        body_format: form-multipart
-        body:
-          files:
-            content: "{{ lookup('file', '/runner/project/output/' + item.path | basename | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.zip')) }}"
-            filename: "{{ item.path | basename | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.zip') }}"
-          userId: "UD_5bd9c0cc2c71a000152c2d32"
-          apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
-      loop: "{{ json_files.files }}"
-      register: upload_response
-      when: json_files.matched > 0
-
-    # Optional: Display URL of uploaded file (if provided)
-    - name: Display URL of uploaded file (if provided)
-      debug:
-        msg: "File uploaded successfully. URL: {{ upload_response.json.url if upload_response.json.url is defined else 'No URL returned' }}"
-      when: json_files.matched > 0
-      no_log: false
+        patterns:
