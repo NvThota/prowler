@@ -128,9 +128,13 @@
     # Rename JSON files to Healthcheck format and convert to PDF
     - name: Process JSON files
       shell: |
+        # Get the new PDF file name
+        new_pdf="{{ item.path | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.pdf') }}"
+        # Rename the JSON file
         mv "{{ item.path }}" "{{ item.path | regex_replace('prowler', 'healthcheck') }}"
+        # Convert JSON to temporary text file and then to PDF
         cat "{{ item.path | regex_replace('prowler', 'healthcheck') }}" | jq . > temp.txt && \
-        pandoc temp.txt -o "{{ item.path | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.pdf') }}"
+        pandoc temp.txt -o "/runner/project/output/${new_pdf}"
         rm temp.txt
       loop: "{{ json_files.files }}"
       register: processed_files
@@ -150,7 +154,7 @@
         body_format: form-multipart
         body:
           files:
-            content: "{{ lookup('file', '/runner/project/output/' + item.path | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.pdf')) }}"
+            content: "{{ lookup('file', '/runner/project/output/' + (item.path | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.pdf'))) }}"
             filename: "{{ item.path | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.pdf') }}"
       loop: "{{ json_files.files }}"
       register: upload_response
