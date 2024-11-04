@@ -115,15 +115,13 @@
             headers:
               userId: "UD_5bd9c0cc2c71a000152c2d32"
               apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
-              clientId: "CD_5b974fbfb2864d162de79b66"
+              clientId: "CD_5bd9c0cc2c71a000152c2d32"
               realm: "trianz"
             body_format: form-multipart
             body:
               files:
                 content: "{{ lookup('file', '/runner/project/output/' + item.path | basename | regex_replace('\\.json$', '.pdf')) }}"
                 filename: "{{ item.path | basename | regex_replace('\\.json$', '.pdf') }}"
-              userId: "UD_5bd9c0cc2c71a000152c2d32"
-              apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
           register: upload_response
 
         - name: Extract link from API response
@@ -133,14 +131,8 @@
       loop: "{{ json_files.files }}"
       when: json_files.matched > 0
 
-    # Optional: Debug API response
-    - name: Debug API response
+    # Optional: Debug uploaded PDF links
+    - name: Debug uploaded PDF links
       debug:
-        var: upload_response
-      when: json_files.matched > 0
-
-    # Output the link for each uploaded file
-    - name: Display uploaded file link
-      debug:
-        msg: "Uploaded file accessible at: {{ link }}"
+        msg: "Uploaded PDF link: {{ link }}"
       when: link is defined
