@@ -102,7 +102,7 @@
     # Convert JSON files to PDF format and upload
     - name: Convert JSON to PDF format and upload to API
       block:
-        - name: Copy JSON to PDF file (this step simulates conversion)
+        - name: Copy JSON to PDF file (simulated conversion)
           copy:
             src: "{{ item.path }}"
             dest: "{{ item.path | regex_replace('\\.json$', '.pdf') }}"
