@@ -99,27 +99,12 @@
         patterns: "prowler-output-*.json"
       register: json_files
 
-    # Rename JSON files to PDF format and delete the original JSON files
+    # Rename JSON files to PDF format
     - name: Rename JSON files to PDF format
-      copy:
-        src: "{{ item.path }}"
-        dest: "{{ item.path | regex_replace('\\.json$', '.pdf') }}"
+      command: mv "{{ item.path }}" "{{ item.path | regex_replace('\\.json$', '.pdf') }}"
       loop: "{{ json_files.files }}"
+      when: json_files.matched > 0
       register: renamed_files
-      when: json_files.matched > 0
-
-    - name: Remove original JSON files
-      file:
-        path: "{{ item.path }}"
-        state: absent
-      loop: "{{ json_files.files }}"
-      when: json_files.matched > 0
-
-    - name: Display renamed files
-      debug:
-        msg: "Renamed file: {{ item.path | regex_replace('\\.json$', '.pdf') }}"
-      loop: "{{ json_files.files }}"
-      when: json_files.matched > 0
 
     # Compress each PDF file into ZIP format
     - name: Compress PDF files into ZIP format
@@ -128,11 +113,10 @@
         dest: "/runner/project/output/{{ item.path | basename | regex_replace('\\.json$', '.zip') }}"
         format: zip
       loop: "{{ json_files.files }}"
-      register: zipped_files
       when: json_files.matched > 0
 
     # Upload each ZIP file to Backend API using specified headers and form data
-    - name: Upload json ZIP file to Backend API
+    - name: Upload pdf ZIP file to Backend API
       uri:
         url: "{{ api_url }}"
         method: POST
@@ -146,8 +130,6 @@
           files:
             content: "{{ lookup('file', '/runner/project/output/' + item.path | basename | regex_replace('\\.json$', '.zip')) }}"
             filename: "{{ item.path | basename | regex_replace('\\.json$', '.zip') }}"
-          userId: "UD_5bd9c0cc2c71a000152c2d32"
-          apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
       loop: "{{ json_files.files }}"
       register: upload_response
       when: json_files.matched > 0
@@ -158,14 +140,26 @@
         var: upload_response
       when: json_files.matched > 0
 
-    # Parse and display the link from the API response
-    - name: Extract and display link from the API response
+    # Prepare final JSON response
+    - name: Set final response
       set_fact:
-        file_link: "{{ item.data.link }}"
+        final_response: >
+          {
+            "message": "Success",
+            "status": 200,
+            "data": {
+              "link": "{{ item.data.link }}",
+              "key": "{{ item.data.key }}",
+              "fileName": "{{ item.data.fileName }}"
+            }
+          }
       loop: "{{ upload_response.results }}"
       when: item.status == 200
+      register: final_responses
 
-    - name: Display the file link
+    # Display the final formatted response
+    - name: Display final formatted response
       debug:
-        msg: "Uploaded file link: {{ file_link }}"
-      when: file_link is defined
+        msg: "{{ item }}"
+      loop: "{{ final_responses.results }}"
+      when: item is defined
