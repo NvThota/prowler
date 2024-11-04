@@ -1,7 +1,7 @@
 ---
 - name: Run Healthcheck Docker Container using AWX Credentials
   hosts: localhost
-  become: true
+  become: True
 
   vars:
     services: "elb,s3,ec2"  # Define the services you want to scan, separated by commas
@@ -99,23 +99,40 @@
         patterns: "prowler-output-*.json"
       register: json_files
 
-    # Rename JSON files to PDF format
+    # Rename JSON files to PDF format and delete the original JSON files
     - name: Rename JSON files to PDF format
-      command: mv "{{ item.path }}" "{{ item.path | regex_replace('\\.json$', '.pdf') }}"
+      copy:
+        src: "{{ item.path }}"
+        dest: "{{ item.path | regex_replace('\\.json$', '.pdf') }}"
       loop: "{{ json_files.files }}"
       register: renamed_files
       when: json_files.matched > 0
-      no_log: false
+
+    - name: Remove original JSON files
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ json_files.files }}"
+      when: json_files.matched > 0
 
     - name: Display renamed files
       debug:
         msg: "Renamed file: {{ item.path | regex_replace('\\.json$', '.pdf') }}"
       loop: "{{ json_files.files }}"
       when: json_files.matched > 0
-      no_log: false
 
-    # Upload each renamed PDF file to Backend API
-    - name: Upload PDF file to Backend API
+    # Compress each PDF file into ZIP format
+    - name: Compress PDF files into ZIP format
+      archive:
+        path: "{{ item.path | regex_replace('\\.json$', '.pdf') }}"
+        dest: "/runner/project/output/{{ item.path | basename | regex_replace('\\.json$', '.zip') }}"
+        format: zip
+      loop: "{{ json_files.files }}"
+      register: zipped_files
+      when: json_files.matched > 0
+
+    # Upload each ZIP file to Backend API using specified headers and form data
+    - name: Upload json ZIP file to Backend API
       uri:
         url: "{{ api_url }}"
         method: POST
@@ -127,8 +144,10 @@
         body_format: form-multipart
         body:
           files:
-            content: "{{ lookup('file', item.path | regex_replace('\\.json$', '.pdf')) }}"
-            filename: "{{ item.path | regex_replace('\\.json$', '.pdf') }}"
+            content: "{{ lookup('file', '/runner/project/output/' + item.path | basename | regex_replace('\\.json$', '.zip')) }}"
+            filename: "{{ item.path | basename | regex_replace('\\.json$', '.zip') }}"
+          userId: "UD_5bd9c0cc2c71a000152c2d32"
+          apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
       loop: "{{ json_files.files }}"
       register: upload_response
       when: json_files.matched > 0
