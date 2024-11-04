@@ -105,14 +105,14 @@
       loop: "{{ json_files.files }}"
       register: renamed_files
       when: json_files.matched > 0
-      no_log: true
+      no_log: false
 
     - name: Display renamed files
       debug:
         msg: "Renamed file: {{ item.path | regex_replace('\\.json$', '.pdf') }}"
       loop: "{{ json_files.files }}"
       when: json_files.matched > 0
-      no_log: true
+      no_log: false
 
     # Upload each renamed PDF file to Backend API
     - name: Upload PDF file to Backend API
