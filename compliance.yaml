@@ -125,21 +125,16 @@
         patterns: "prowler-output-*.json"
       register: json_files
 
-    # Rename JSON files to Healthcheck format
-    - name: Rename generated files
-      command: mv "{{ item.path }}" "{{ item.path | regex_replace('prowler', 'healthcheck') }}"
+    # Rename JSON files to Healthcheck format and convert to PDF
+    - name: Process JSON files
+      shell: |
+        mv "{{ item.path }}" "{{ item.path | regex_replace('prowler', 'healthcheck') }}"
+        cat "{{ item.path | regex_replace('prowler', 'healthcheck') }}" | jq . > temp.txt && \
+        pandoc temp.txt -o "{{ item.path | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.pdf') }}"
       loop: "{{ json_files.files }}"
-      register: renamed_files
+      register: processed_files
       when: json_files.matched > 0
       no_log: true
-
-    - name: Convert JSON files to PDF
-      shell: |
-        cat {{ item.path | regex_replace('prowler', 'healthcheck') }} | jq . > temp.txt && pandoc temp.txt -o "{{ item.path | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.pdf') }}"
-      loop: "{{ json_files.files }}"
-      register: pdf_files
-      when: json_files.matched > 0
-      no_log: false
 
     # Upload each PDF file to Backend API
     - name: Upload PDF file to Backend API
@@ -156,8 +151,6 @@
           files:
             content: "{{ lookup('file', '/runner/project/output/' + item.path | basename | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.pdf')) }}"
             filename: "{{ item.path | basename | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.pdf') }}"
-          userId: "UD_5bd9c0cc2c71a000152c2d32"
-          apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
       loop: "{{ json_files.files }}"
       register: upload_response
       when: json_files.matched > 0
