@@ -99,39 +99,38 @@
         patterns: "prowler-output-*.json"
       register: json_files
 
-    # Rename JSON files to PDF format
-    - name: Rename JSON files to PDF format
-      command: mv "{{ item.path }}" "{{ item.path | regex_replace('\\.json$', '.pdf') }}"
-      loop: "{{ json_files.files }}"
-      when: json_files.matched > 0
-      register: renamed_files
+    # Convert JSON files to PDF format and upload
+    - name: Convert JSON to PDF format and upload to API
+      block:
+        - name: Copy JSON to PDF file (this step simulates conversion)
+          copy:
+            src: "{{ item.path }}"
+            dest: "{{ item.path | regex_replace('\\.json$', '.pdf') }}"
+          register: copy_output
 
-    # Compress each PDF file into ZIP format
-    - name: Compress PDF files into ZIP format
-      archive:
-        path: "{{ item.path | regex_replace('\\.json$', '.pdf') }}"
-        dest: "/runner/project/output/{{ item.path | basename | regex_replace('\\.json$', '.zip') }}"
-        format: zip
-      loop: "{{ json_files.files }}"
-      when: json_files.matched > 0
+        - name: Upload PDF file to Backend API
+          uri:
+            url: "{{ api_url }}"
+            method: POST
+            headers:
+              userId: "UD_5bd9c0cc2c71a000152c2d32"
+              apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
+              clientId: "CD_5b974fbfb2864d162de79b66"
+              realm: "trianz"
+            body_format: form-multipart
+            body:
+              files:
+                content: "{{ lookup('file', '/runner/project/output/' + item.path | basename | regex_replace('\\.json$', '.pdf')) }}"
+                filename: "{{ item.path | basename | regex_replace('\\.json$', '.pdf') }}"
+              userId: "UD_5bd9c0cc2c71a000152c2d32"
+              apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
+          register: upload_response
 
-    # Upload each ZIP file to Backend API using specified headers and form data
-    - name: Upload pdf ZIP file to Backend API
-      uri:
-        url: "{{ api_url }}"
-        method: POST
-        headers:
-          userId: "UD_5bd9c0cc2c71a000152c2d32"
-          apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
-          clientId: "CD_5b974fbfb2864d162de79b66"
-          realm: "trianz"
-        body_format: form-multipart
-        body:
-          files:
-            content: "{{ lookup('file', '/runner/project/output/' + item.path | basename | regex_replace('\\.json$', '.zip')) }}"
-            filename: "{{ item.path | basename | regex_replace('\\.json$', '.zip') }}"
+        - name: Extract link from API response
+          set_fact:
+            link: "{{ upload_response.json.data.link }}"
+
       loop: "{{ json_files.files }}"
-      register: upload_response
       when: json_files.matched > 0
 
     # Optional: Debug API response
@@ -140,26 +139,8 @@
         var: upload_response
       when: json_files.matched > 0
 
-    # Prepare final JSON response
-    - name: Set final response
-      set_fact:
-        final_response: >
-          {
-            "message": "Success",
-            "status": 200,
-            "data": {
-              "link": "{{ item.data.link }}",
-              "key": "{{ item.data.key }}",
-              "fileName": "{{ item.data.fileName }}"
-            }
-          }
-      loop: "{{ upload_response.results }}"
-      when: item.status == 200
-      register: final_responses
-
-    # Display the final formatted response
-    - name: Display final formatted response
+    # Output the link for each uploaded file
+    - name: Display uploaded file link
       debug:
-        msg: "{{ item }}"
-      loop: "{{ final_responses.results }}"
-      when: item is defined
+        msg: "Uploaded file accessible at: {{ link }}"
+      when: link is defined
