@@ -113,7 +113,7 @@
       loop: "{{ json_files.files }}"
       register: pdf_files
       when: json_files.matched > 0
-      no_log: true
+      no_log: false
 
     # Upload each PDF file to Backend API
     - name: Upload PDF file to Backend API
