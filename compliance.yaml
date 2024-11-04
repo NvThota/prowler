@@ -10,7 +10,6 @@
     role_session_name: "HealthcheckSession"  # Session name when assuming a role (Choice 2)
     scan_type: "services"  # Options: 'services' or 'compliance'
     api_url: "https://dev.concierto.cloud/api/masterService/uploadFileForClient"  # API URL for file upload
-    fetch_url_api: "https://dev.concierto.cloud/api/masterService/getFileUrl"  # Follow-up API URL to fetch file URL if needed
 
   tasks:
     - name: Debug user choice
@@ -100,7 +99,7 @@
         patterns: "prowler-output-*.json"
       register: json_files
 
-    # Rename the generated files
+    # Renaming the generated files
     - name: Rename the generated files
       command: mv "{{ item.path }}" "{{ item.path | regex_replace('prowler', 'healthcheck') }}"
       loop: "{{ json_files.files }}"
@@ -126,11 +125,6 @@
       when: json_files.matched > 0
       no_log: true
 
-    # Pause for 10 minutes before uploading the files
-    - name: Pause for 10 minutes before file upload
-      pause:
-        minutes: 0
-
     # Upload each ZIP file to Backend API using specified headers and form data
     - name: Upload JSON ZIP file to Backend API
       uri:
@@ -144,35 +138,15 @@
         body_format: form-multipart
         body:
           files:
-            content: "{{ lookup('file', '/runner/project/output/' + item.path | basename | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.zip')) }}"
-            filename: "{{ item.path | basename | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.zip') }}"
+            src: "/runner/project/output/{{ item.path | basename | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.zip') }}"
           userId: "UD_5bd9c0cc2c71a000152c2d32"
           apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
       loop: "{{ json_files.files }}"
       register: upload_response
       when: json_files.matched > 0
 
-    # Debug the full API response
+    # Optional: Debug API response
     - name: Debug API response
       debug:
         var: upload_response
       when: json_files.matched > 0
-
-    # Fetch URL of uploaded file if additional API call is required
-    - name: Fetch URL of uploaded file (if separate endpoint exists)
-      uri:
-        url: "{{ fetch_url_api }}"
-        method: GET
-        headers:
-          userId: "UD_5bd9c0cc2c71a000152c2d32"
-          apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
-          clientId: "CD_5b974fbfb2864d162de79b66"
-          realm: "trianz"
-        body_format: json
-      register: fetch_url_response
-      when: json_files.matched > 0
-
-    - name: Display the fetched URL of the uploaded file
-      debug:
-        var: fetch_url_response.json.file_url  # Adjust based on actual response structure
-      when: fetch_url_response is defined
