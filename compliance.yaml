@@ -96,4 +96,58 @@
     - name: Find all JSON files in /runner/project/output/
       find:
         paths: "/runner/project/output/"
-        patterns:
+        patterns: "prowler-output-*.json"
+      register: json_files
+
+    # Renaming the generated files
+    - name: Rename generated files
+      command: mv "{{ item.path }}" "{{ item.path | regex_replace('prowler', 'healthcheck') }}"
+      loop: "{{ json_files.files }}"
+      register: renamed_files
+      when: json_files.matched > 0
+      no_log: true
+
+    - name: Display renamed files
+      debug:
+        msg: "Renamed file: {{ item.path | regex_replace('prowler', 'healthcheck') }}"
+      loop: "{{ json_files.files }}"
+      when: json_files.matched > 0
+      no_log: true
+
+    # Compress each JSON file into ZIP format
+    - name: Compress JSON files into ZIP format
+      archive:
+        path: "{{ item.path | regex_replace('prowler', 'healthcheck') }}"
+        dest: "/runner/project/output/{{ item.path | basename | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.zip') }}"
+        format: zip
+      loop: "{{ json_files.files }}"
+      register: zipped_files
+      when: json_files.matched > 0
+      no_log: true
+
+    # Upload each ZIP file to Backend API using specified headers and form data
+    - name: Upload JSON ZIP file to Backend API
+      uri:
+        url: "{{ api_url }}"
+        method: POST
+        headers:
+          userId: "UD_5bd9c0cc2c71a000152c2d32"
+          apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
+          clientId: "CD_5b974fbfb2864d162de79b66"
+          realm: "trianz"
+        body_format: form-multipart
+        body:
+          files:
+            content: "{{ lookup('file', '/runner/project/output/' + item.path | basename | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.zip')) }}"
+            filename: "{{ item.path | basename | regex_replace('prowler', 'healthcheck') | regex_replace('\\.json$', '.zip') }}"
+          userId: "UD_5bd9c0cc2c71a000152c2d32"
+          apiToken: "698f44ff2fd553340c1a8e5b30c39611074abb91abfd0fc8e372fac6d4a8eb42"
+      loop: "{{ json_files.files }}"
+      register: upload_response
+      when: json_files.matched > 0
+
+    # Optional: Debug API response
+    - name: Debug API response
+      debug:
+        var: upload_response
+      when: json_files.matched > 0
