@@ -129,7 +129,7 @@
     # Pause for 10 minutes before uploading the files
     - name: Pause for 10 minutes before file upload
       pause:
-        minutes: 10
+        minutes: 0
 
     # Upload each ZIP file to Backend API using specified headers and form data
     - name: Upload JSON ZIP file to Backend API
